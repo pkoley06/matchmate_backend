@@ -1,0 +1,61 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: matchmate-backend
+
+  web:
+    error:
+      # Dev setting: put our error text (e.g. "User must be at least 18 years old") into the JSON
+      # error body so the Flutter app can show it. Without this, "message" is always missing.
+      # (Spring Boot 4 renamed this: the old "server.error.*" keys are silently ignored now.)
+      include-message: always
+      include-binding-errors: always
+
+  # Load secrets/settings from the git-ignored .env file in the project root (KEY=VALUE format).
+  # "optional:" = don't crash if the file is missing (e.g. in production, where real
+  # environment variables are used instead; those always win over .env).
+  config:
+    import: optional:file:.env[.properties]
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/matchmate_db}
+    username: ${DB_USER:dev_user}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+
+# ==========================================
+# Security & JWT Configuration
+# ==========================================
+jwt:
+  # Comes from
+  JWT_SECRET in .env (or a real environment variable). No default on purpose:
+  # if it is missing, the app refuses to start instead of silently using a weak/public key.
+  secret: ${JWT_SECRET}
+  # 86400000 ms = 24 hours
+  expiration-ms: 86400000
+  issuer: matchmate-backend
+
+# ==========================================
+# Firebase Admin SDK Configuration
+# ==========================================
+firebase:
+  # The service-account JSON lives in the git-ignored secrets/ folder (NOT in src/main/resources,
+  # which would pack it into the jar). "file:./..." is relative to the folder the app starts in.
+  credentials-path: ${FIREBASE_CREDENTIALS_PATH:file:./secrets/firebase-service-account.json}
