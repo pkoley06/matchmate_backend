@@ -45,7 +45,7 @@ spring:
 # ==========================================
 jwt:
   # Comes from
-  JWT_SECRET in .env (or a real environment variable). No default on purpose:
+  #  JWT_SECRET in .env (or a real environment variable). No default on purpose:
   # if it is missing, the app refuses to start instead of silently using a weak/public key.
   secret: ${JWT_SECRET}
   # 86400000 ms = 24 hours

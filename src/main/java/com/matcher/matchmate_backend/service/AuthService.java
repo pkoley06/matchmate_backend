@@ -2,7 +2,6 @@ package com.matcher.matchmate_backend.service;
 
 
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
 import com.matcher.matchmate_backend.dto.request.TokenVerifyRequest;
 import com.matcher.matchmate_backend.dto.response.AuthTokenResponse;

@@ -1459,6 +1459,7 @@ catch { "$($_.Exception.Response.StatusCode.value__) $($_.ErrorDetails.Message)"
 | `Connection refused … localhost:5432` | PostgreSQL container is not running. | `docker-compose up -d`. |
 | `401` on a request that has a token | Header must be exactly `Authorization: Bearer <token>`; or the token expired (24 h) or was signed with an older secret. | Log in again via `verify-token`. |
 | `400` with no message in the body | `server.error.include-message` missing. | Add the `server.error` block (C6). |
+| IDE shows `cannot find symbol: method getIdToken()` (or `getProvider()`) on `TokenVerifyRequest`, but `./gradlew compileJava` succeeds | IDE-only false positive. Lombok's `@Data` on `TokenVerifyRequest` generates those getters at compile time; Gradle's own build sees them fine. The IDE's language server just hasn't run Lombok's annotation processor on that file (plugin missing/disabled, or stale index). | IntelliJ: enable the Lombok plugin + "Enable annotation processing" (Settings → Build → Compiler → Annotation Processors), then Invalidate Caches/Restart. VS Code: install the Lombok Annotations Support extension, then run "Java: Clean Java Language Server Workspace". Always trust `./gradlew compileJava` over the IDE's red squiggles. |
 
 ---
 
