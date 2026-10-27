@@ -57,6 +57,41 @@ public class JwtTokenProvider {
 
     }
 
+    /**
+     * Generates a stateless JWT for an admin console user. Carries "aud": "admin" so this
+     * token can never be accepted by the mobile-user JwtAuthenticationFilter, and vice versa.
+     */
+    public String generateAdminToken(Long adminId, String username){
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + expirationMs);
+
+        return Jwts.builder()
+                .subject(String.valueOf(adminId))
+                .claim("username", username)
+                .claim("role", "ROLE_ADMIN")
+                .audience().add("admin").and()
+                .issuer(issuer)
+                .issuedAt(now)
+                .expiration(expiryDate)
+                .signWith(signingKey)
+                .compact();
+    }
+
+    public boolean isAdminToken(String token){
+        Claims claims = getClaimsFromToken(token);
+        return claims.getAudience() != null && claims.getAudience().contains("admin");
+    }
+
+    public Long getAdminIdFromToken(String token){
+        Claims claims = getClaimsFromToken(token);
+        return Long.parseLong(claims.getSubject());
+    }
+
+    public String getUsernameFromToken(String token){
+        Claims claims = getClaimsFromToken(token);
+        return claims.get("username", String.class);
+    }
+
     private Claims getClaimsFromToken(String token){
         return Jwts.parser()
                 .verifyWith(signingKey)

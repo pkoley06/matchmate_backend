@@ -1,0 +1,42 @@
+package com.matcher.matchmate_backend.dto.response;
+
+import com.matcher.matchmate_backend.model.enums.auth.Gender;
+import com.matcher.matchmate_backend.model.enums.auth.OccupationCategory;
+import com.matcher.matchmate_backend.model.enums.lifestyle.CleanlinessLevel;
+import com.matcher.matchmate_backend.model.enums.lifestyle.DietaryPreference;
+import com.matcher.matchmate_backend.model.enums.lifestyle.GuestTolerance;
+import com.matcher.matchmate_backend.model.enums.lifestyle.SleepSchedule;
+import com.matcher.matchmate_backend.model.enums.lifestyle.SmokingHabit;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
+import java.util.List;
+
+/** GET /api/v1/users/me — full profile, used by the Profile strength screen. */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserProfileResponse {
+    private Long userId;
+    private String fullName;
+    private Gender gender;
+    private LocalDate dateOfBirth;
+    private Integer age;
+    private String avatarUrl;
+    private OccupationCategory occupationCategory;
+    private String occupationTitle;
+    private String bio;
+    private SmokingHabit smokingHabit;
+    private DietaryPreference dietaryPreference;
+    private SleepSchedule sleepSchedule;
+    private CleanlinessLevel cleanlinessLevel;
+    private GuestTolerance guestTolerance;
+    private Integer profileStrength;
+    private Boolean isProfileComplete;
+    /** Lifestyle field names (camelCase, matching this DTO) that are still unanswered. */
+    private List<String> missingLifestyleFields;
+}

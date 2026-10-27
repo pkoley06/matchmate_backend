@@ -4,6 +4,6 @@ public enum DietaryPreference {
     VEGETARIAN,
     NON_VEGETARIAN,
     VEGAN,
-    EGGETARIAN
-
+    EGGETARIAN,
+    NO_PREFERENCE
 }

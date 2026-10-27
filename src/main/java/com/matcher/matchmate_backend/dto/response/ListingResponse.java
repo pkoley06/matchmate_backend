@@ -1,0 +1,45 @@
+package com.matcher.matchmate_backend.dto.response;
+
+import com.matcher.matchmate_backend.model.enums.listing.FurnishingStatus;
+import com.matcher.matchmate_backend.model.enums.listing.ListingType;
+import com.matcher.matchmate_backend.model.enums.listing.RoomType;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.List;
+
+/**
+ * Shared response shape for create/get/list-mine. Superset of the §6.6 create-response
+ * fields (id, hostUserId, status, createdAt) plus the full listing detail.
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ListingResponse {
+    private Long id;
+    private Long hostUserId;
+    private String status; // "PUBLISHED" or "UNAVAILABLE", derived from isAvailable
+    private ListingType listingType;
+    private String title;
+    private Integer rentAmount;
+    private Integer depositAmount;
+    private RoomType roomType;
+    private FurnishingStatus furnishingStatus;
+    private Double latitude;
+    private Double longitude;
+    private String localityName;
+    private String city;
+    private String description;
+    private List<String> photoUrls;
+    private LocalDate moveInDate;
+    private List<String> amenities;
+    private Boolean openToAllGenders;
+    private Boolean isAvailable;
+    private OffsetDateTime createdAt;
+    private OffsetDateTime updatedAt;
+}

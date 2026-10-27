@@ -106,25 +106,29 @@ While checking the project against the guide, these problems were found. The cod
 ---
 
 ### Milestone 3: Deterministic Matching Engine
-- [ ] **Step 3.1**: Algorithmic Matching Heuristic Engine (`MatchingHeuristicEngine.java`)
+- [x] **Step 3.1**: Algorithmic Matching Heuristic Engine (`MatchingHeuristicEngine.java`) — now consumed by `DiscoveryService` (Milestone 4). Unit-tested in `MatchingHeuristicEngineTest.java`.
   - Smoking dealbreaker check
   - Distance & weighted similarity calculation ($w_{\text{clean}}=2.0, w_{\text{sleep}}=1.5, w_{\text{guest}}=1.2, w_{\text{diet}}=1.0$)
   - Compatibility highlight chips generator
-- [ ] **Step 3.2**: Progressive Lifestyle Vector Endpoint (`PUT /api/v1/users/me/lifestyle`)
+- [x] **Step 3.2**: Progressive Lifestyle Vector Endpoint (`PUT /api/v1/users/me/lifestyle`) + `GET /api/v1/users/me`
+  - `LifestyleRequest` (all 5 fields optional — only non-null ones are applied, so each lifestyle card can be answered independently).
+  - `UserProfileResponse` (full profile + `profileStrength` + `missingLifestyleFields`).
+  - `UserService.updateLifestyle` / `getMyProfile` / shared `computeProfileStrength` (40% base from onboarding + 12% per answered lifestyle question = 100% fully answered). `updateDemographics` now uses the same shared calculation instead of a hardcoded `40`.
 
 ---
 
-### Milestone 4: Spatial Discovery Feed Service
-- [ ] **Step 4.1**: PostGIS Native Spatial Queries in `ListingRepository` (`ST_DWithin`, `ST_Distance`)
-- [ ] **Step 4.2**: Feed Assembly & Compatibility Ranking (`DiscoveryService.java`)
-  - ⚠️ **Must exclude users where `onboarding_completed = false`** — they only have placeholder gender/date-of-birth from auto-provisioning (see C4).
-- [ ] **Step 4.3**: Discovery Feed API (`GET /api/v1/discovery`)
+### Milestone 4: Spatial Discovery Feed Service — ✅ done 2026-10-27
+- [x] **Step 4.1**: PostGIS Native Spatial Queries in `ListingRepository` (`ST_DWithin`, `ST_Distance`) — `findCandidateIdsWithDistance` / `countCandidates`.
+- [x] **Step 4.2**: Feed Assembly & Compatibility Ranking (`DiscoveryService.java`)
+  - ⚠️ **Excludes users where `onboarding_completed = false`** in the native query's `JOIN app_users` filter — they only have placeholder gender/date-of-birth from auto-provisioning (see C4).
+- [x] **Step 4.3**: Discovery Feed API (`GET /api/v1/discovery`), `DiscoveryController.java`.
+- Tested end-to-end against real PostGIS via Testcontainers in `DiscoveryFeedIntegrationTest.java` (radius filter, onboarding-exclusion filter, auth requirement).
 
 ---
 
-### Milestone 5: Media & Listing Management
-- [ ] **Step 5.1**: S3/Cloudflare R2 Presigned Upload Service (`MediaStorageService.java`)
-- [ ] **Step 5.2**: Listing CRUD APIs (`POST /api/v1/listings`, `GET /api/v1/listings/{id}`)
+### Milestone 5: Media & Listing Management — 🟡 minimal CRUD done 2026-10-27, media upload still pending
+- [ ] **Step 5.1**: S3/Cloudflare R2 Presigned Upload Service (`MediaStorageService.java`) — not started; no cloud storage is configured yet. `POST /api/v1/listings` accepts `photoUrls` as direct strings in the meantime (same pattern as the onboarding `avatarUrl` field).
+- [x] **Step 5.2**: Listing CRUD APIs — `ListingController.java`/`ListingService.java`: `POST /api/v1/listings`, `GET /api/v1/listings/{id}`, `GET /api/v1/listings/my`. Tested in `ListingControllerIntegrationTest.java`.
 
 ---
 

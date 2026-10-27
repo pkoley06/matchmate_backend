@@ -7,6 +7,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.locationtech.jts.geom.Point;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +32,9 @@ public class Listing {
     @Enumerated(EnumType.STRING)
     @Column(name = "listing_type", nullable = false, length = 20)
     private ListingType listingType;
+
+    @Column(name = "title", length = 150)
+    private String title;
 
     @Column(name = "rent_amount", nullable = false)
     private Integer rentAmount;
@@ -61,6 +65,17 @@ public class Listing {
     @Column(name = "photo_urls", columnDefinition = "text[]")
     @Builder.Default
     private List<String> photoUrls = new ArrayList<>();
+
+    @Column(name = "move_in_date")
+    private LocalDate moveInDate;
+
+    @Column(name = "amenities", columnDefinition = "text[]")
+    @Builder.Default
+    private List<String> amenities = new ArrayList<>();
+
+    @Column(name = "open_to_all_genders", nullable = false)
+    @Builder.Default
+    private Boolean openToAllGenders = true;
 
     @Column(name = "is_available", nullable = false)
     @Builder.Default

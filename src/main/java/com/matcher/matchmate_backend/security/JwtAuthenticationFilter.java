@@ -31,7 +31,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String jwt = extractJwtFromRequest(request);
 
-        if( StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt) ){
+        if( StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt) && !jwtTokenProvider.isAdminToken(jwt) ){
             Long userId = jwtTokenProvider.getUserIdFromToken(jwt);
             String firebaseUid = jwtTokenProvider.getFirebaseUidFromToken(jwt);
 
