@@ -36,15 +36,36 @@ This runbook contains the complete, one-time setup instructions for deploying `m
 
 ---
 
-## Step A: Push Workflows to GitHub
+## Step A: Enable GitHub Actions & Push Workflows
 
-1. Stage and commit the deployment files on your local machine:
-   ```bash
-   git add .github/ Dockerfile .dockerignore deploy/ src/
-   git commit -m "feat(deploy): setup CI/CD pipeline, dockerization, and deploy runbook"
-   git push origin main
-   ```
-2. **Note**: The first CI `deploy` job is expected to fail or be blocked until you complete the VM setup and GitHub environment secrets below. The `ci` and `image` jobs will succeed and push the initial image to GHCR.
+GitHub Actions is serverless and built directly into GitHub. You do **not** need to install any agents, plugins, or third-party servers. Placing workflow files inside the `.github/workflows/` directory and pushing them to your repository is what automatically activates GitHub Actions.
+
+### 1. Verify GitHub Actions Permissions (One-Time Setting)
+Before pushing, ensure your GitHub repository allows Actions and has permission to publish container images:
+1. Navigate to: **`https://github.com/pkoley06/matchmate_backend/settings/actions`** (Settings -> Actions -> General).
+2. Under **Actions permissions**:
+   - Select **Allow all actions and reusable workflows**.
+3. Under **Workflow permissions**:
+   - Select **Read and write permissions** (this allows the `GITHUB_TOKEN` to push images to GitHub Container Registry `ghcr.io` and delete old image versions).
+   - Check **Allow GitHub Actions to create and approve pull requests** (optional, recommended).
+4. Click **Save**.
+
+### 2. Commit and Push the Workflow Files
+The repository includes two workflows:
+* [`.github/workflows/ci-deploy.yml`](../.github/workflows/ci-deploy.yml): Triggers automatically on push to `main` and `dev`, builds the jar, builds the ARM64 Docker image, pushes to GHCR, and invokes deployment.
+* [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml): Reusable and manual dispatch workflow for deployments and rollbacks.
+
+Stage and commit all generated files from your local repository (on `dev` or `main`):
+```bash
+git add .github/ Dockerfile .dockerignore deploy/ src/
+git commit -m "feat(deploy): setup CI/CD pipeline, dockerization, and deploy runbook"
+git push origin dev   # or git push origin main
+```
+
+> [!NOTE]
+> Once pushed, open the **Actions** tab in GitHub (`https://github.com/pkoley06/matchmate_backend/actions`). You will see the **CI & Deploy** workflow appear immediately!
+> The `ci` and `image` jobs will succeed and publish your container image to GHCR.
+> The final `deploy` job will wait or fail on this very first run until you finish creating the SSH key and GitHub `production` environment secrets in the following steps. This is completely normal and expected.
 
 ---
 
@@ -95,14 +116,14 @@ sudo apt-get install -y postgresql postgresql-contrib postgresql-16-postgis-3
 sudo systemctl enable --now postgresql
 ```
 
-If the database and role need verification:
+Verify connection and PostGIS extension over loopback using your existing credentials:
 ```bash
-sudo -u postgres psql -c "CREATE ROLE matchmate_user WITH LOGIN PASSWORD 'YOUR_STRONG_PASSWORD';" 2>/dev/null || true
-sudo -u postgres psql -c "CREATE DATABASE matchmate_db OWNER matchmate_user;" 2>/dev/null || true
-sudo -u postgres psql -d matchmate_db -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+PGPASSWORD='matchmate' psql -h 127.0.0.1 -U dev_user -d matchmate_db -c "SELECT postgis_full_version();"
+```
 
-# Verify connection over loopback:
-PGPASSWORD='YOUR_STRONG_PASSWORD' psql -h 127.0.0.1 -U matchmate_user -d matchmate_db -c "SELECT postgis_full_version();"
+If the PostGIS extension was not created yet on `matchmate_db`, enable it:
+```bash
+sudo -u postgres psql -d matchmate_db -c "CREATE EXTENSION IF NOT EXISTS postgis;"
 ```
 
 ### 3. Create Secrets and Environment Directory
@@ -121,8 +142,8 @@ SERVER_FORWARD_HEADERS_STRATEGY=framework
 JAVA_OPTS=-Xms256m -Xmx512m -XX:+UseG1GC
 
 DB_NAME=matchmate_db
-DB_USER=matchmate_user
-DB_PASSWORD=YOUR_STRONG_PASSWORD
+DB_USER=dev_user
+DB_PASSWORD=matchmate
 DB_URL=jdbc:postgresql://127.0.0.1:5432/matchmate_db
 
 JWT_SECRET=GENERATE_WITH_OPENSSL_RAND_BASE64_32
