@@ -1,0 +1,6 @@
+# Ignore everything by default to ensure a clean build context
+*
+
+# Include target directory containing the pre-built jar
+!target/
+!target/*.jar

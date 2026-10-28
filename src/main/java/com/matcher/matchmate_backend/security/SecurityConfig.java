@@ -37,6 +37,7 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 // 5. Configure Endpoint Route Access
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/health").permitAll()             // Unauthenticated health check
                         .requestMatchers("/api/v1/auth/**").permitAll()     // Public login handshake
                         .requestMatchers("/api/v1/branding/**").permitAll() // Public branding / config
                         .requestMatchers("/error").permitAll()
