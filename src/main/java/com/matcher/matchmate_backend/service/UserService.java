@@ -3,10 +3,14 @@ package com.matcher.matchmate_backend.service;
 
 import com.matcher.matchmate_backend.dto.request.DemographicsRequest;
 import com.matcher.matchmate_backend.dto.request.LifestyleRequest;
+import com.matcher.matchmate_backend.dto.response.ListingResponse;
+import com.matcher.matchmate_backend.dto.response.OtherUserProfileResponse;
 import com.matcher.matchmate_backend.dto.response.UserDemographicsResponse;
 import com.matcher.matchmate_backend.dto.response.UserProfileResponse;
 import com.matcher.matchmate_backend.model.entity.AppUser;
+import com.matcher.matchmate_backend.model.entity.Listing;
 import com.matcher.matchmate_backend.repository.AppUserRepository;
+import com.matcher.matchmate_backend.repository.ListingRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -29,9 +33,17 @@ public class UserService {
     private static final int POINTS_PER_LIFESTYLE_ANSWER = 12;
 
     private final AppUserRepository userRepository;
+    private final ListingRepository listingRepository;
+    private final ListingService listingService;
 
-    public UserService(AppUserRepository userRepository) {
+    public UserService(
+            AppUserRepository userRepository,
+            ListingRepository listingRepository,
+            ListingService listingService
+    ) {
         this.userRepository = userRepository;
+        this.listingRepository = listingRepository;
+        this.listingService = listingService;
     }
 
     @Transactional
@@ -100,6 +112,65 @@ public class UserService {
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         return toProfileResponse(user);
+    }
+
+    /** GET /api/v1/users/{id} — other user's public profile and their active listings. */
+    public OtherUserProfileResponse getOtherUserProfile(Long targetUserId) {
+        AppUser user = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        if (!Boolean.TRUE.equals(user.getIsActive()) || Boolean.TRUE.equals(user.getIsSuspended())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User profile is unavailable");
+        }
+
+        int age = Period.between(user.getDateOfBirth(), LocalDate.now()).getYears();
+
+        List<Listing> listings = listingRepository.findByHostUserId(targetUserId)
+                .stream()
+                .filter(l -> Boolean.TRUE.equals(l.getIsAvailable()))
+                .toList();
+
+        List<ListingResponse> listingResponses = listings.stream()
+                .map(listingService::toResponse)
+                .toList();
+
+        return OtherUserProfileResponse.builder()
+                .id(user.getId())
+                .fullName(user.getFullName())
+                .gender(user.getGender())
+                .age(age)
+                .avatarUrl(user.getAvatarUrl())
+                .occupationCategory(user.getOccupationCategory())
+                .occupationTitle(user.getOccupationTitle())
+                .bio(user.getBio())
+                .smokingHabit(user.getSmokingHabit())
+                .dietaryPreference(user.getDietaryPreference())
+                .sleepSchedule(user.getSleepSchedule())
+                .cleanlinessLevel(user.getCleanlinessLevel())
+                .guestTolerance(user.getGuestTolerance())
+                .locality(user.getLastKnownLocality())
+                .activeListingsCount(listingResponses.size())
+                .activeListings(listingResponses)
+                .build();
+    }
+
+    /** DELETE /api/v1/users/me — self account deletion. Deactivates user and delists all listings. */
+    @Transactional
+    public void deleteMyAccount(Long userId) {
+        AppUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        user.setIsActive(false);
+        user.setFullName("Deleted User");
+        user.setBio(null);
+        user.setAvatarUrl(null);
+        userRepository.save(user);
+
+        List<Listing> userListings = listingRepository.findByHostUserId(userId);
+        for (Listing listing : userListings) {
+            listing.setIsAvailable(false);
+        }
+        listingRepository.saveAll(userListings);
     }
 
     private UserProfileResponse toProfileResponse(AppUser user) {

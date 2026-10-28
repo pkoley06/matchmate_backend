@@ -1,5 +1,7 @@
 package com.matcher.matchmate_backend.security;
 
+import com.matcher.matchmate_backend.model.entity.AppUser;
+import com.matcher.matchmate_backend.repository.AppUserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,14 +14,17 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Optional;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final AppUserRepository userRepository;
 
-    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider) {
+    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, AppUserRepository userRepository) {
         this.jwtTokenProvider = jwtTokenProvider;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -34,6 +39,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if( StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt) && !jwtTokenProvider.isAdminToken(jwt) ){
             Long userId = jwtTokenProvider.getUserIdFromToken(jwt);
             String firebaseUid = jwtTokenProvider.getFirebaseUidFromToken(jwt);
+
+            // Check if user is suspended or deactivated
+            Optional<AppUser> userOpt = userRepository.findById(userId);
+            if (userOpt.isPresent()) {
+                AppUser user = userOpt.get();
+                if (Boolean.TRUE.equals(user.getIsSuspended())) {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json");
+                    String reason = user.getSuspendedReason() != null ? user.getSuspendedReason() : "Your account has been suspended.";
+                    response.getWriter().write("{\"error\":\"ACCOUNT_SUSPENDED\",\"message\":\"" + reason + "\"}");
+                    return;
+                }
+                if (!Boolean.TRUE.equals(user.getIsActive())) {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\":\"ACCOUNT_DEACTIVATED\",\"message\":\"Your account has been deactivated.\"}");
+                    return;
+                }
+            }
 
             AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(userId, firebaseUid);
 

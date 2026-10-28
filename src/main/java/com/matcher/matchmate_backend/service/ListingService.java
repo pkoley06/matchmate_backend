@@ -27,10 +27,16 @@ public class ListingService {
 
     private final ListingRepository listingRepository;
     private final AppUserRepository userRepository;
+    private final NotificationService notificationService;
 
-    public ListingService(ListingRepository listingRepository, AppUserRepository userRepository) {
+    public ListingService(
+            ListingRepository listingRepository,
+            AppUserRepository userRepository,
+            NotificationService notificationService
+    ) {
         this.listingRepository = listingRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -57,7 +63,9 @@ public class ListingService {
                 .isAvailable(true)
                 .build();
 
-        return toResponse(listingRepository.save(listing));
+        Listing saved = listingRepository.save(listing);
+        notificationService.notifyMatchingSeekersForNewListing(saved);
+        return toResponse(saved);
     }
 
     public ListingResponse getById(Long listingId) {
@@ -74,7 +82,7 @@ public class ListingService {
         return GEOMETRY_FACTORY.createPoint(new Coordinate(longitude, latitude));
     }
 
-    private ListingResponse toResponse(Listing listing) {
+    public ListingResponse toResponse(Listing listing) {
         Point location = listing.getLocation();
         return ListingResponse.builder()
                 .id(listing.getId())

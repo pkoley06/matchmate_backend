@@ -3,6 +3,7 @@ package com.matcher.matchmate_backend.controller;
 
 import com.matcher.matchmate_backend.dto.request.DemographicsRequest;
 import com.matcher.matchmate_backend.dto.request.LifestyleRequest;
+import com.matcher.matchmate_backend.dto.response.OtherUserProfileResponse;
 import com.matcher.matchmate_backend.dto.response.UserDemographicsResponse;
 import com.matcher.matchmate_backend.dto.response.UserProfileResponse;
 import com.matcher.matchmate_backend.security.AuthenticatedUserPrincipal;
@@ -10,11 +11,7 @@ import com.matcher.matchmate_backend.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -49,6 +46,19 @@ public class UserController {
             @AuthenticationPrincipal AuthenticatedUserPrincipal principal
     ) {
         return ResponseEntity.ok(userService.getMyProfile(principal.getUserId()));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<OtherUserProfileResponse> getOtherUserProfile(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.getOtherUserProfile(id));
+    }
+
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> deleteMyAccount(
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal
+    ) {
+        userService.deleteMyAccount(principal.getUserId());
+        return ResponseEntity.noContent().build();
     }
 
 }

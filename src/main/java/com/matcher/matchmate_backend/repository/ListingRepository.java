@@ -1,6 +1,8 @@
 package com.matcher.matchmate_backend.repository;
 
 import com.matcher.matchmate_backend.model.entity.Listing;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,6 +13,43 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
 
     List<Listing> findByHostUserId(Long hostUserId);
     List<Listing> findByIsAvailableTrue();
+    long countByIsAvailableTrue();
+    List<Listing> findTop5ByOrderByCreatedAtDesc();
+
+    @Query(value = """
+        SELECT l.* FROM listings l
+        JOIN app_users h ON l.host_user_id = h.id
+        WHERE l.is_available = true
+          AND h.is_active = true
+          AND h.is_suspended = false
+          AND h.notify_roommate_finder = true
+          AND h.id != :seekerUserId
+          AND h.fcm_token IS NOT NULL
+          AND ST_DWithin(
+                l.location,
+                :seekerLocation,
+                :radiusMeters
+          )
+        """, nativeQuery = true)
+    List<Listing> findActiveListingsWithinRadius(
+        @Param("seekerLocation") org.locationtech.jts.geom.Point seekerLocation,
+        @Param("radiusMeters") double radiusMeters,
+        @Param("seekerUserId") Long seekerUserId
+    );
+
+    /**
+     * Admin console listing search by keyword across title, locality, or city, with optional availability filter.
+     */
+    @Query(value = "SELECT l FROM Listing l JOIN FETCH l.hostUser WHERE " +
+            "(:search IS NULL OR LOWER(l.title) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(l.localityName) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(l.city) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
+            "(:isAvailable IS NULL OR l.isAvailable = :isAvailable)",
+            countQuery = "SELECT COUNT(l) FROM Listing l WHERE " +
+            "(:search IS NULL OR LOWER(l.title) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(l.localityName) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(l.city) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
+            "(:isAvailable IS NULL OR l.isAvailable = :isAvailable)")
+    Page<Listing> searchAdminListings(
+            @Param("search") String search,
+            @Param("isAvailable") Boolean isAvailable,
+            Pageable pageable);
 
     /**
      * Milestone 4 Step 4.1: PostGIS bounding pre-filter (ST_DWithin, GiST-indexed) plus exact
@@ -26,6 +65,7 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
                     JOIN app_users u ON u.id = l.host_user_id
                     WHERE l.is_available = TRUE
                       AND u.onboarding_completed = TRUE
+                      AND u.is_active = TRUE
                       AND l.host_user_id <> :currentUserId
                       AND ST_DWithin(l.location, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, :radiusMeters)
                       AND (:gender IS NULL OR u.gender = :gender)
@@ -64,6 +104,7 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
                     JOIN app_users u ON u.id = l.host_user_id
                     WHERE l.is_available = TRUE
                       AND u.onboarding_completed = TRUE
+                      AND u.is_active = TRUE
                       AND l.host_user_id <> :currentUserId
                       AND ST_DWithin(l.location, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, :radiusMeters)
                       AND (:gender IS NULL OR u.gender = :gender)

@@ -1,0 +1,79 @@
+package com.matcher.matchmate_backend.dto.request;
+
+import com.matcher.matchmate_backend.model.enums.listing.FurnishingStatus;
+import com.matcher.matchmate_backend.model.enums.listing.ListingType;
+import com.matcher.matchmate_backend.model.enums.listing.RoomType;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
+import java.util.List;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class AdminListingCreateRequest {
+
+    @NotNull(message = "Host user ID is required")
+    private Long hostUserId;
+
+    @NotNull(message = "Listing type is required")
+    private ListingType listingType;
+
+    @NotBlank(message = "Title is required")
+    @Size(max = 150, message = "Title cannot exceed 150 characters")
+    private String title;
+
+    @NotNull(message = "Rent amount is required")
+    @Min(value = 0, message = "Rent amount cannot be negative")
+    private Integer rentAmount;
+
+    @NotNull(message = "Deposit amount is required")
+    @Min(value = 0, message = "Deposit amount cannot be negative")
+    private Integer depositAmount;
+
+    @NotNull(message = "Room type is required")
+    private RoomType roomType;
+
+    @NotNull(message = "Furnishing status is required")
+    private FurnishingStatus furnishingStatus;
+
+    @NotNull(message = "Latitude is required")
+    @Min(value = -90, message = "Latitude must be between -90 and 90")
+    @Max(value = 90, message = "Latitude must be between -90 and 90")
+    private Double latitude;
+
+    @NotNull(message = "Longitude is required")
+    @Min(value = -180, message = "Longitude must be between -180 and 180")
+    @Max(value = 180, message = "Longitude must be between -180 and 180")
+    private Double longitude;
+
+    @NotBlank(message = "Locality name is required")
+    @Size(max = 150, message = "Locality name cannot exceed 150 characters")
+    private String localityName;
+
+    @NotBlank(message = "City is required")
+    @Size(max = 100, message = "City cannot exceed 100 characters")
+    private String city;
+
+    @Size(max = 2000, message = "Description cannot exceed 2000 characters")
+    private String description;
+
+    private List<String> photoUrls;
+    private LocalDate moveInDate;
+    private List<String> amenities;
+
+    @Builder.Default
+    private Boolean openToAllGenders = true;
+
+    @Builder.Default
+    private Boolean isAvailable = true;
+}

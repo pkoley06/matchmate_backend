@@ -8,6 +8,7 @@ import com.matcher.matchmate_backend.model.enums.auth.Gender;
 import com.matcher.matchmate_backend.repository.AppUserRepository;
 import com.matcher.matchmate_backend.repository.ListingDistanceProjection;
 import com.matcher.matchmate_backend.repository.ListingRepository;
+import com.matcher.matchmate_backend.repository.UserBlockRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -18,6 +19,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Milestone 4 Step 4.2: joins the spatial candidate query ({@link ListingRepository}) with
@@ -33,15 +35,18 @@ public class DiscoveryService {
     private final ListingRepository listingRepository;
     private final AppUserRepository userRepository;
     private final MatchingHeuristicEngine matchingEngine;
+    private final UserBlockRepository blockRepository;
 
     public DiscoveryService(
             ListingRepository listingRepository,
             AppUserRepository userRepository,
-            MatchingHeuristicEngine matchingEngine
+            MatchingHeuristicEngine matchingEngine,
+            UserBlockRepository blockRepository
     ) {
         this.listingRepository = listingRepository;
         this.userRepository = userRepository;
         this.matchingEngine = matchingEngine;
+        this.blockRepository = blockRepository;
     }
 
     public DiscoveryFeedResponse getFeed(
@@ -109,12 +114,19 @@ public class DiscoveryService {
             listingById.put(listing.getId(), listing);
         }
 
+        Set<Long> blockedUserIds = blockRepository.findBlockedUserIdsByBlockerId(seeker.getId());
+
         List<DiscoveryCardResponse> cards = new java.util.ArrayList<>();
         for (Map.Entry<Long, Double> entry : distanceByListingId.entrySet()) {
             Listing listing = listingById.get(entry.getKey());
             if (listing == null) continue; // deleted between the two queries; skip rather than fail the request
 
             AppUser host = listing.getHostUser();
+            if (blockedUserIds.contains(host.getId()) ||
+                    Boolean.TRUE.equals(host.getIsSuspended()) ||
+                    !Boolean.TRUE.equals(host.getIsActive())) {
+                continue; // Skip listings from blocked, suspended, or deactivated users
+            }
             int hostAge = Period.between(host.getDateOfBirth(), LocalDate.now()).getYears();
             MatchingHeuristicEngine.MatchResult match = matchingEngine.evaluate(seeker, host);
 

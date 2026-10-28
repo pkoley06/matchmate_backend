@@ -80,12 +80,44 @@ public class AppUser {
     private String lastKnownLocality = "Kolkata";
 
     @Column(name = "is_active", nullable = false)
-    @Builder.Default
+    @Builder.Default    
     private Boolean isActive = true;
+
+    @Column(name = "is_suspended", nullable = false)
+    @Builder.Default
+    private Boolean isSuspended = false;
+
+    @Column(name = "suspended_reason", length = 255)
+    private String suspendedReason;
 
     @Column(name = "onboarding_completed", nullable = false)
     @Builder.Default
     private Boolean onboardingCompleted = false;
+
+    @Column(name = "fcm_token", length = 512)
+    private String fcmToken;
+
+    @Column(name = "target_search_location", columnDefinition = "geography(Point,4326)")
+    private Point targetSearchLocation;
+
+    @Column(name = "target_search_locality", length = 100)
+    private String targetSearchLocality;
+
+    @Column(name = "search_radius_km")
+    @Builder.Default
+    private Double searchRadiusKm = 10.0;
+
+    @Column(name = "is_looking_for_room", nullable = false)
+    @Builder.Default
+    private Boolean isLookingForRoom = true;
+
+    @Column(name = "notify_room_finder", nullable = false)
+    @Builder.Default
+    private Boolean notifyRoomFinder = true;
+
+    @Column(name = "notify_roommate_finder", nullable = false)
+    @Builder.Default
+    private Boolean notifyRoommateFinder = true;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
