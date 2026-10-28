@@ -20,6 +20,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 /**
+ * CI CD
  * Separate filter chain for the Flutter-web admin console, matched only for /api/v1/admin/**.
  * Must be @Order(1) (checked before SecurityConfig's catch-all chain, which is @Order(2)).
  */
