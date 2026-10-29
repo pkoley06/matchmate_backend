@@ -170,8 +170,8 @@ class AdminIntegrationTest {
         listingReq.put("title", "Modern 2BHK Master Bedroom");
         listingReq.put("rentAmount", 12000);
         listingReq.put("depositAmount", 24000);
-        listingReq.put("roomType", "PRIVATE_ROOM");
-        listingReq.put("furnishingStatus", "FULLY_FURNISHED");
+        listingReq.put("roomType", "PRIVATE");
+        listingReq.put("furnishingStatus", "FURNISHED");
         listingReq.put("latitude", 22.5726);
         listingReq.put("longitude", 88.3639);
         listingReq.put("localityName", "Salt Lake Sector V");
