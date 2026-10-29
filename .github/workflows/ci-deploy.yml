@@ -31,12 +31,17 @@ jobs:
       - name: Prepare mock secrets for CI tests
         run: |
           mkdir -p secrets
-          cat << 'EOF' > secrets/firebase-service-account.json
+          # The Firebase SDK parses this as a real PKCS8 PEM key when the app context starts,
+          # even though no test actually calls out to Firebase. A hand-typed dummy string isn't
+          # valid DER and blows up every @SpringBootTest, so generate a throwaway RSA key instead.
+          openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/fb_key.pem
+          PRIVATE_KEY_JSON=$(python3 -c "import json; print(json.dumps(open('/tmp/fb_key.pem').read()))")
+          cat << EOF > secrets/firebase-service-account.json
           {
             "type": "service_account",
             "project_id": "matchmate-ci-test",
             "private_key_id": "ci_key_id",
-            "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC3ci_dummy_key\n-----END PRIVATE KEY-----\n",
+            "private_key": $PRIVATE_KEY_JSON,
             "client_email": "ci@matchmate-ci-test.iam.gserviceaccount.com",
             "client_id": "1234567890"
           }
