@@ -40,11 +40,14 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
     /**
      * Admin console listing search by keyword across title, locality, or city, with optional availability filter.
      */
+    // :search is cast explicitly because it is used both in an "IS NULL" check and inside
+    // LOWER(CONCAT(...)); without a fixed type, Hibernate/Postgres can't agree on one type for
+    // both usages and binds a null search as bytea, which LOWER() then rejects.
     @Query(value = "SELECT l FROM Listing l JOIN FETCH l.hostUser WHERE " +
-            "(:search IS NULL OR LOWER(l.title) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(l.localityName) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(l.city) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
+            "(:search IS NULL OR LOWER(l.title) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(l.localityName) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(l.city) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))) AND " +
             "(:isAvailable IS NULL OR l.isAvailable = :isAvailable)",
             countQuery = "SELECT COUNT(l) FROM Listing l WHERE " +
-            "(:search IS NULL OR LOWER(l.title) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(l.localityName) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(l.city) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
+            "(:search IS NULL OR LOWER(l.title) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(l.localityName) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(l.city) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))) AND " +
             "(:isAvailable IS NULL OR l.isAvailable = :isAvailable)")
     Page<Listing> searchAdminListings(
             @Param("search") String search,
