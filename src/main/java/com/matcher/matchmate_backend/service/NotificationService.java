@@ -127,6 +127,40 @@ public class NotificationService {
     }
 
     /**
+     * Triggered when another user comments on a host's listing. The host is taken
+     * from the caller (already loaded inside the request transaction) so this
+     * async method never touches a lazy proxy.
+     */
+    @Async
+    public void notifyHostOfNewComment(Listing listing, AppUser host, AppUser author, String content) {
+        if (listing == null || host == null || author == null) return;
+        if (host.getFcmToken() == null || host.getFcmToken().isBlank()) return;
+
+        try {
+            String roomLabel = listing.getTitle() != null && !listing.getTitle().isBlank()
+                    ? listing.getTitle()
+                    : "your room in " + (listing.getLocalityName() != null ? listing.getLocalityName() : "your area");
+            String preview = content == null ? "" : content.trim();
+            if (preview.length() > 90) preview = preview.substring(0, 87) + "…";
+
+            String title = "💬 " + author.getFullName() + " asked about " + roomLabel;
+            String body = preview.isEmpty() ? "Open the listing to reply." : "\"" + preview + "\"";
+
+            Map<String, String> data = new HashMap<>();
+            data.put("type", "LISTING_COMMENT");
+            data.put("listingId", String.valueOf(listing.getId()));
+            data.put("commentAuthorId", String.valueOf(author.getId()));
+            data.put("route", "/discover/room/" + listing.getId());
+            data.put("click_action", "FLUTTER_NOTIFICATION_CLICK");
+
+            sendPush(host.getFcmToken(), title, body, data);
+        } catch (Exception e) {
+            log.error("[FCM] Error notifying host #{} about a comment on listing #{}: {}",
+                    host.getId(), listing.getId(), e.getMessage());
+        }
+    }
+
+    /**
      * Triggered when a room finder updates their target location / search radius.
      * Finds active listings within that radius, calculates the compatibility match percentage,
      * and notifies the hosts that an interested seeker matches their room.

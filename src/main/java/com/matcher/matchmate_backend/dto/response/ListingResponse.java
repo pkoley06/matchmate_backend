@@ -42,4 +42,12 @@ public class ListingResponse {
     private Boolean isAvailable;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
+
+    // Host metadata, so Room Details can render the host card without
+    // depending on a Discover card being passed through navigation.
+    private String hostName;
+    private Integer hostAge;
+    private String hostAvatarUrl;
+    private String hostOccupationTitle;
+    private Boolean isRoomSeekerHost;
 }

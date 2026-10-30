@@ -9,6 +9,7 @@ import com.matcher.matchmate_backend.dto.response.UserDemographicsResponse;
 import com.matcher.matchmate_backend.dto.response.UserProfileResponse;
 import com.matcher.matchmate_backend.model.entity.AppUser;
 import com.matcher.matchmate_backend.model.entity.Listing;
+import com.matcher.matchmate_backend.model.enums.auth.AccountStatus;
 import com.matcher.matchmate_backend.repository.AppUserRepository;
 import com.matcher.matchmate_backend.repository.ListingRepository;
 import jakarta.transaction.Transactional;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.Period;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,15 +37,35 @@ public class UserService {
     private final AppUserRepository userRepository;
     private final ListingRepository listingRepository;
     private final ListingService listingService;
+    private final NotificationService notificationService;
 
     public UserService(
             AppUserRepository userRepository,
             ListingRepository listingRepository,
-            ListingService listingService
+            ListingService listingService,
+            NotificationService notificationService
     ) {
         this.userRepository = userRepository;
         this.listingRepository = listingRepository;
         this.listingService = listingService;
+        this.notificationService = notificationService;
+    }
+
+    /**
+     * PATCH /api/v1/users/me/room-seeker — the Discover header toggle. Turning it on
+     * re-runs the "new seeker" host alerts when the user already has a search area set.
+     */
+    @Transactional
+    public UserProfileResponse updateRoomSeeker(Long userId, boolean isRoomSeeker) {
+        AppUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        boolean wasSeeker = Boolean.TRUE.equals(user.getIsLookingForRoom());
+        user.setIsLookingForRoom(isRoomSeeker);
+        AppUser saved = userRepository.save(user);
+        if (isRoomSeeker && !wasSeeker && saved.getTargetSearchLocation() != null) {
+            notificationService.notifyHostsForNewSeeker(saved);
+        }
+        return toProfileResponse(saved);
     }
 
     @Transactional
@@ -115,6 +137,7 @@ public class UserService {
     }
 
     /** GET /api/v1/users/{id} — other user's public profile and their active listings. */
+    @Transactional // toResponse reads the lazy host; open-in-view is off
     public OtherUserProfileResponse getOtherUserProfile(Long targetUserId) {
         AppUser user = userRepository.findById(targetUserId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
@@ -154,6 +177,32 @@ public class UserService {
                 .build();
     }
 
+    /**
+     * POST /api/v1/users/me/disable — self-service, reversible pause.
+     * <p>
+     * Marks the account {@link AccountStatus#DISABLED}, stamps {@code disabled_at} and clears
+     * {@code is_active}. Because {@link com.matcher.matchmate_backend.security.JwtAuthenticationFilter}
+     * rejects every request from an inactive user, all previously issued JWTs are revoked at once
+     * (tokens are stateless, so the active flag *is* the revocation list). Discovery, roommate
+     * search and listing-visibility queries all filter on {@code is_active = true}, so the user and
+     * their rooms disappear from other people's feeds immediately. The FCM token is dropped so no
+     * pushes reach the device while disabled. Signing in again re-activates the account
+     * (see AuthService).
+     */
+    @Transactional
+    public void disableMyAccount(Long userId) {
+        AppUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (user.getAccountStatus() == AccountStatus.DELETED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This account has already been deleted");
+        }
+        user.setIsActive(false);
+        user.setAccountStatus(AccountStatus.DISABLED);
+        user.setDisabledAt(OffsetDateTime.now());
+        user.setFcmToken(null);
+        userRepository.save(user);
+    }
+
     /** DELETE /api/v1/users/me — self account deletion. Deactivates user and delists all listings. */
     @Transactional
     public void deleteMyAccount(Long userId) {
@@ -161,6 +210,8 @@ public class UserService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         user.setIsActive(false);
+        user.setAccountStatus(AccountStatus.DELETED);
+        user.setFcmToken(null);
         user.setFullName("Deleted User");
         user.setBio(null);
         user.setAvatarUrl(null);
@@ -194,6 +245,7 @@ public class UserService {
                 .profileStrength(computeProfileStrength(user))
                 .isProfileComplete(user.getOnboardingCompleted())
                 .missingLifestyleFields(missingLifestyleFields(user))
+                .isRoomSeeker(user.getIsLookingForRoom() != null ? user.getIsLookingForRoom() : Boolean.TRUE)
                 .build();
     }
 

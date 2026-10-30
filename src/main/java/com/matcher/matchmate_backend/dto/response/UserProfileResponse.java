@@ -39,4 +39,6 @@ public class UserProfileResponse {
     private Boolean isProfileComplete;
     /** Lifestyle field names (camelCase, matching this DTO) that are still unanswered. */
     private List<String> missingLifestyleFields;
+    /** Discover header "Room seeker" toggle (persisted as app_users.is_looking_for_room). */
+    private Boolean isRoomSeeker;
 }

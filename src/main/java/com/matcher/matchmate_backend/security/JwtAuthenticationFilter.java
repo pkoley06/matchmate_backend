@@ -52,9 +52,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     return;
                 }
                 if (!Boolean.TRUE.equals(user.getIsActive())) {
+                    // Stateless JWTs: the active flag is the revocation list. A disabled (paused)
+                    // account gets a distinct code so the client can explain it was the user's choice.
+                    boolean disabled = user.getAccountStatus() == com.matcher.matchmate_backend.model.enums.auth.AccountStatus.DISABLED;
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     response.setContentType("application/json");
-                    response.getWriter().write("{\"error\":\"ACCOUNT_DEACTIVATED\",\"message\":\"Your account has been deactivated.\"}");
+                    response.getWriter().write(disabled
+                            ? "{\"error\":\"ACCOUNT_DISABLED\",\"message\":\"Your account is disabled. Sign in again to re-activate it.\"}"
+                            : "{\"error\":\"ACCOUNT_DEACTIVATED\",\"message\":\"Your account has been deactivated.\"}");
                     return;
                 }
             }

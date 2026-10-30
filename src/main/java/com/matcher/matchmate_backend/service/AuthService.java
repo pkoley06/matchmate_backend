@@ -7,6 +7,7 @@ import com.matcher.matchmate_backend.dto.request.TokenVerifyRequest;
 import com.matcher.matchmate_backend.dto.response.AuthTokenResponse;
 import com.matcher.matchmate_backend.dto.response.PreFilledUserData;
 import com.matcher.matchmate_backend.model.entity.AppUser;
+import com.matcher.matchmate_backend.model.enums.auth.AccountStatus;
 import com.matcher.matchmate_backend.model.enums.auth.Gender;
 import com.matcher.matchmate_backend.repository.AppUserRepository;
 import com.matcher.matchmate_backend.security.JwtTokenProvider;
@@ -60,6 +61,16 @@ public class AuthService {
         AppUser user = userRepository
                 .findByFirebaseUid(firebaseUid)
                 .orElseGet(() -> autoProvisionUser(firebaseUid, tokenVerifyRequest, name, picture));
+
+        // A self-disabled account comes back the moment its owner signs in again. Deleted
+        // accounts stay inactive (the JWT filter keeps rejecting their requests).
+        if (user.getAccountStatus() == AccountStatus.DISABLED) {
+            log.info("Re-activating disabled account {}", user.getId());
+            user.setAccountStatus(AccountStatus.ACTIVE);
+            user.setIsActive(true);
+            user.setDisabledAt(null);
+            user = userRepository.save(user);
+        }
 
         // Generate custom MatchMate session JWT
         String accessToken = jwtTokenProvider.generateToken(user.getId(), user.getFirebaseUid());

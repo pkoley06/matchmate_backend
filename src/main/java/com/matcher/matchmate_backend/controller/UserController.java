@@ -3,6 +3,7 @@ package com.matcher.matchmate_backend.controller;
 
 import com.matcher.matchmate_backend.dto.request.DemographicsRequest;
 import com.matcher.matchmate_backend.dto.request.LifestyleRequest;
+import com.matcher.matchmate_backend.dto.request.RoomSeekerRequest;
 import com.matcher.matchmate_backend.dto.response.OtherUserProfileResponse;
 import com.matcher.matchmate_backend.dto.response.UserDemographicsResponse;
 import com.matcher.matchmate_backend.dto.response.UserProfileResponse;
@@ -51,6 +52,27 @@ public class UserController {
     @GetMapping("/{id}")
     public ResponseEntity<OtherUserProfileResponse> getOtherUserProfile(@PathVariable Long id) {
         return ResponseEntity.ok(userService.getOtherUserProfile(id));
+    }
+
+    /** Discover header toggle: body {@code {"is_room_seeker": true|false}}. */
+    @PatchMapping("/me/room-seeker")
+    public ResponseEntity<UserProfileResponse> updateRoomSeeker(
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal,
+            @Valid @RequestBody RoomSeekerRequest request
+    ) {
+        return ResponseEntity.ok(userService.updateRoomSeeker(principal.getUserId(), request.getIsRoomSeeker()));
+    }
+
+    /**
+     * Settings → Account → Disable account. Soft, reversible: the account is hidden everywhere and
+     * every existing session token stops working until the user signs in again.
+     */
+    @PostMapping("/me/disable")
+    public ResponseEntity<Void> disableMyAccount(
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal
+    ) {
+        userService.disableMyAccount(principal.getUserId());
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/me")

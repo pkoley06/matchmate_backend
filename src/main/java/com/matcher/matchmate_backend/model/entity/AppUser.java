@@ -90,6 +90,15 @@ public class AppUser {
     @Column(name = "suspended_reason", length = 255)
     private String suspendedReason;
 
+    /** Self-service lifecycle (ACTIVE / DISABLED / DELETED). {@code isActive} stays the single "may use the app" flag. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "account_status", nullable = false, length = 20)
+    @Builder.Default
+    private AccountStatus accountStatus = AccountStatus.ACTIVE;
+
+    @Column(name = "disabled_at")
+    private OffsetDateTime disabledAt;
+
     @Column(name = "onboarding_completed", nullable = false)
     @Builder.Default
     private Boolean onboardingCompleted = false;

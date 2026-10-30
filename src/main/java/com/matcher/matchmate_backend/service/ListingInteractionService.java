@@ -28,19 +28,22 @@ public class ListingInteractionService {
     private final ListingRepository listingRepository;
     private final AppUserRepository userRepository;
     private final ListingService listingService;
+    private final NotificationService notificationService;
 
     public ListingInteractionService(
             ListingLikeRepository likeRepository,
             ListingCommentRepository commentRepository,
             ListingRepository listingRepository,
             AppUserRepository userRepository,
-            ListingService listingService
+            ListingService listingService,
+            NotificationService notificationService
     ) {
         this.likeRepository = likeRepository;
         this.commentRepository = commentRepository;
         this.listingRepository = listingRepository;
         this.userRepository = userRepository;
         this.listingService = listingService;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -82,11 +85,14 @@ public class ListingInteractionService {
                 .build();
     }
 
+    /** Transactional so {@code toResponse} can read the lazy host (open-in-view is off). */
+    @Transactional
     public List<ListingResponse> getLikedListings(Long userId) {
         List<Listing> listings = likeRepository.findLikedListingsByUserId(userId);
         return listings.stream().map(listingService::toResponse).toList();
     }
 
+    @Transactional
     public List<ListingCommentResponse> getComments(Long listingId) {
         if (!listingRepository.existsById(listingId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Listing not found");
@@ -110,7 +116,15 @@ public class ListingInteractionService {
                 .content(request.getContent().trim())
                 .build();
 
-        return toCommentResponse(commentRepository.save(comment));
+        ListingComment saved = commentRepository.save(comment);
+
+        // Alert the host when somebody else asks a question on their room.
+        AppUser host = listing.getHostUser();
+        if (host != null && !host.getId().equals(author.getId())) {
+            notificationService.notifyHostOfNewComment(listing, host, author, saved.getContent());
+        }
+
+        return toCommentResponse(saved);
     }
 
     @Transactional
