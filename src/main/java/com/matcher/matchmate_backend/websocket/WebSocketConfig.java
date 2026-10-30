@@ -10,7 +10,8 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 /**
  * STOMP broker for real-time room comments.
  * <ul>
- *   <li>Handshake: {@code /ws-comments} (raw WebSocket) and {@code /ws-comments} with SockJS fallback.</li>
+ *   <li>Handshake: {@code /ws-comments} (raw WebSocket only — the only client is the
+ *       Flutter app, which never falls back to SockJS).</li>
  *   <li>Clients subscribe to {@code /topic/rooms/{roomId}/comments}.</li>
  *   <li>Clients send to {@code /app/rooms/{roomId}/comment.send}.</li>
  *   <li>Per-session errors arrive on {@code /user/queue/errors}.</li>
@@ -32,8 +33,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // Registering a second, SockJS-wrapped endpoint at this same ENDPOINT path
+        // used to overwrite this plain registration in Spring's handler map, so every
+        // raw WebSocket upgrade (the only kind the Flutter client ever sends) got routed
+        // to the SockJS handler instead and was rejected with HTTP 400.
         registry.addEndpoint(ENDPOINT).setAllowedOriginPatterns("*");
-        registry.addEndpoint(ENDPOINT).setAllowedOriginPatterns("*").withSockJS();
     }
 
     @Override
