@@ -146,6 +146,7 @@ public class DiscoveryService {
                     .depositAmount(listing.getDepositAmount())
                     .localityName(listing.getLocalityName())
                     .city(listing.getCity())
+                    .genderPreference(listing.getGenderPreference())
                     .distanceKm(roundToOneDecimal(entry.getValue()))
                     .matchPercentage(match.matchPercentage())
                     .compatibilityHighlights(match.compatibilityHighlights())

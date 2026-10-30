@@ -59,6 +59,14 @@ public class Listing {
     @Column(name = "city", nullable = false, length = 100)
     private String city;
 
+    /** Reverse-geocoded administrative area (state / province); optional. */
+    @Column(name = "state_name", length = 100)
+    private String stateName;
+
+    /** Reverse-geocoded postal / PIN code; optional. */
+    @Column(name = "postal_code", length = 20)
+    private String postalCode;
+
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
@@ -73,9 +81,11 @@ public class Listing {
     @Builder.Default
     private List<String> amenities = new ArrayList<>();
 
-    @Column(name = "open_to_all_genders", nullable = false)
+    /** Replaces the V4 {@code open_to_all_genders} flag (migrated in V12). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "gender_preference", nullable = false, length = 20)
     @Builder.Default
-    private Boolean openToAllGenders = true;
+    private GenderPreference genderPreference = GenderPreference.ALL;
 
     @Column(name = "is_available", nullable = false)
     @Builder.Default
@@ -88,4 +98,10 @@ public class Listing {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
+
+    /** Derived view kept for API compatibility with clients that still read the boolean. */
+    @Transient
+    public boolean isOpenToAllGenders() {
+        return genderPreference == null || genderPreference.isOpenToAll();
+    }
 }

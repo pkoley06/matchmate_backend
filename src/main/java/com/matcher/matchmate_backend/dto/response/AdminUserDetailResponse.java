@@ -1,5 +1,6 @@
 package com.matcher.matchmate_backend.dto.response;
 
+import com.matcher.matchmate_backend.model.enums.auth.AccountStatus;
 import com.matcher.matchmate_backend.model.enums.auth.Gender;
 import com.matcher.matchmate_backend.model.enums.auth.OccupationCategory;
 import com.matcher.matchmate_backend.model.enums.auth.PrimaryAuthProvider;
@@ -41,6 +42,11 @@ public class AdminUserDetailResponse {
     private Boolean isActive;
     private Boolean isSuspended;
     private String suspendedReason;
+    /** Self-service lifecycle: ACTIVE / DISABLED / DELETED. */
+    private AccountStatus accountStatus;
+    private OffsetDateTime disabledAt;
+    private Boolean isLookingForRoom;
+    private NotificationPreferencesResponse notificationPreferences;
     private Boolean onboardingCompleted;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;

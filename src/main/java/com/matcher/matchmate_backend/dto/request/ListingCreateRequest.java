@@ -1,6 +1,7 @@
 package com.matcher.matchmate_backend.dto.request;
 
 import com.matcher.matchmate_backend.model.enums.listing.FurnishingStatus;
+import com.matcher.matchmate_backend.model.enums.listing.GenderPreference;
 import com.matcher.matchmate_backend.model.enums.listing.ListingType;
 import com.matcher.matchmate_backend.model.enums.listing.RoomType;
 import jakarta.validation.constraints.Max;
@@ -62,6 +63,14 @@ public class ListingCreateRequest {
     @Size(max = 100, message = "City cannot exceed 100 characters")
     private String city;
 
+    /** Reverse-geocoded state / province (optional). */
+    @Size(max = 100, message = "State cannot exceed 100 characters")
+    private String stateName;
+
+    /** Reverse-geocoded postal / PIN code (optional). */
+    @Size(max = 20, message = "Postal code cannot exceed 20 characters")
+    private String postalCode;
+
     @Size(max = 2000, message = "Description cannot exceed 2000 characters")
     private String description;
 
@@ -72,6 +81,9 @@ public class ListingCreateRequest {
 
     private List<String> amenities;
 
-    @Builder.Default
-    private Boolean openToAllGenders = true;
+    /** ALL / MALE / FEMALE / NON_BINARY. Defaults to ALL (or to the legacy flag below) when omitted. */
+    private GenderPreference genderPreference;
+
+    /** Legacy flag kept for older clients; ignored when {@link #genderPreference} is sent. */
+    private Boolean openToAllGenders;
 }

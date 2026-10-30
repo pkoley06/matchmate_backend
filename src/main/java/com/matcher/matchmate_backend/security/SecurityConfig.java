@@ -40,6 +40,9 @@ public class SecurityConfig {
                         .requestMatchers("/health").permitAll()             // Unauthenticated health check
                         .requestMatchers("/api/v1/auth/**").permitAll()     // Public login handshake
                         .requestMatchers("/api/v1/branding/**").permitAll() // Public branding / config
+                        // STOMP handshake (+ SockJS transports). The session itself is authenticated
+                        // on the CONNECT frame by StompAuthChannelInterceptor, not here.
+                        .requestMatchers("/ws-comments", "/ws-comments/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()                      // All other APIs require Bearer JWT
                 )

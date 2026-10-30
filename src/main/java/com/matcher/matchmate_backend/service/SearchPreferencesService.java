@@ -3,6 +3,7 @@ package com.matcher.matchmate_backend.service;
 import com.matcher.matchmate_backend.dto.request.SearchPreferencesRequest;
 import com.matcher.matchmate_backend.dto.response.SearchPreferencesResponse;
 import com.matcher.matchmate_backend.model.entity.AppUser;
+import com.matcher.matchmate_backend.model.entity.UserNotificationPreferences;
 import com.matcher.matchmate_backend.repository.AppUserRepository;
 import jakarta.transaction.Transactional;
 import org.locationtech.jts.geom.Coordinate;
@@ -13,6 +14,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Alert area & radius (target location + km) and Room Finder Mode. The two legacy
+ * {@code notify*} fields are still served and accepted for older clients but are stored in
+ * {@link UserNotificationPreferences} since V12.
+ */
 @Service
 public class SearchPreferencesService {
 
@@ -20,10 +26,16 @@ public class SearchPreferencesService {
 
     private final AppUserRepository userRepository;
     private final NotificationService notificationService;
+    private final NotificationPreferencesService preferencesService;
 
-    public SearchPreferencesService(AppUserRepository userRepository, NotificationService notificationService) {
+    public SearchPreferencesService(
+            AppUserRepository userRepository,
+            NotificationService notificationService,
+            NotificationPreferencesService preferencesService
+    ) {
         this.userRepository = userRepository;
         this.notificationService = notificationService;
+        this.preferencesService = preferencesService;
     }
 
     @Transactional
@@ -36,6 +48,7 @@ public class SearchPreferencesService {
     public SearchPreferencesResponse getPreferences(Long userId) {
         AppUser user = getUser(userId);
         Point loc = user.getTargetSearchLocation() != null ? user.getTargetSearchLocation() : user.getLastKnownLocation();
+        UserNotificationPreferences prefs = preferencesService.current(userId);
 
         return SearchPreferencesResponse.builder()
                 .latitude(loc != null ? loc.getY() : 22.5726)
@@ -43,8 +56,8 @@ public class SearchPreferencesService {
                 .locality(user.getTargetSearchLocality() != null ? user.getTargetSearchLocality() : user.getLastKnownLocality())
                 .searchRadiusKm(user.getSearchRadiusKm() != null ? user.getSearchRadiusKm() : 10.0)
                 .isLookingForRoom(user.getIsLookingForRoom() != null ? user.getIsLookingForRoom() : true)
-                .notifyRoomFinder(user.getNotifyRoomFinder() != null ? user.getNotifyRoomFinder() : true)
-                .notifyRoommateFinder(user.getNotifyRoommateFinder() != null ? user.getNotifyRoommateFinder() : true)
+                .notifyRoomFinder(Boolean.TRUE.equals(prefs.getNotifyRoomsNearby()))
+                .notifyRoommateFinder(Boolean.TRUE.equals(prefs.getNotifySeekersNearby()))
                 .build();
     }
 
@@ -63,12 +76,7 @@ public class SearchPreferencesService {
         if (request.getIsLookingForRoom() != null) {
             user.setIsLookingForRoom(request.getIsLookingForRoom());
         }
-        if (request.getNotifyRoomFinder() != null) {
-            user.setNotifyRoomFinder(request.getNotifyRoomFinder());
-        }
-        if (request.getNotifyRoommateFinder() != null) {
-            user.setNotifyRoommateFinder(request.getNotifyRoommateFinder());
-        }
+        preferencesService.setNearbyAlerts(userId, request.getNotifyRoomFinder(), request.getNotifyRoommateFinder());
 
         AppUser saved = userRepository.save(user);
 

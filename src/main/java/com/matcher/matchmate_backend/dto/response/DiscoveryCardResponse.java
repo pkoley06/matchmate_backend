@@ -2,6 +2,7 @@ package com.matcher.matchmate_backend.dto.response;
 
 import com.matcher.matchmate_backend.model.enums.auth.Gender;
 import com.matcher.matchmate_backend.model.enums.listing.FurnishingStatus;
+import com.matcher.matchmate_backend.model.enums.listing.GenderPreference;
 import com.matcher.matchmate_backend.model.enums.listing.ListingType;
 import com.matcher.matchmate_backend.model.enums.listing.RoomType;
 import lombok.AllArgsConstructor;
@@ -32,6 +33,7 @@ public class DiscoveryCardResponse {
     private Integer depositAmount;
     private String localityName;
     private String city;
+    private GenderPreference genderPreference;
     private Double distanceKm;
     /** Null when either side hasn't finished the lifestyle questionnaire yet. */
     private Integer matchPercentage;

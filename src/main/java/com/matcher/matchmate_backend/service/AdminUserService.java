@@ -25,9 +25,11 @@ import java.util.UUID;
 public class AdminUserService {
 
     private final AppUserRepository userRepository;
+    private final NotificationPreferencesService preferencesService;
 
-    public AdminUserService(AppUserRepository userRepository) {
+    public AdminUserService(AppUserRepository userRepository, NotificationPreferencesService preferencesService) {
         this.userRepository = userRepository;
+        this.preferencesService = preferencesService;
     }
 
     public PageResponse<AdminUserSummaryResponse> list(String search, int page, int size) {
@@ -137,6 +139,7 @@ public class AdminUserService {
                 .isActive(user.getIsActive())
                 .isSuspended(user.getIsSuspended())
                 .suspendedReason(user.getSuspendedReason())
+                .accountStatus(user.getAccountStatus())
                 .onboardingCompleted(user.getOnboardingCompleted())
                 .createdAt(user.getCreatedAt())
                 .build();
@@ -163,6 +166,10 @@ public class AdminUserService {
                 .isActive(user.getIsActive())
                 .isSuspended(user.getIsSuspended())
                 .suspendedReason(user.getSuspendedReason())
+                .accountStatus(user.getAccountStatus())
+                .disabledAt(user.getDisabledAt())
+                .isLookingForRoom(user.getIsLookingForRoom())
+                .notificationPreferences(preferencesService.get(user.getId()))
                 .onboardingCompleted(user.getOnboardingCompleted())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())

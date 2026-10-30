@@ -1,5 +1,6 @@
 package com.matcher.matchmate_backend.dto.response;
 
+import com.matcher.matchmate_backend.model.enums.auth.AccountStatus;
 import com.matcher.matchmate_backend.model.enums.auth.Gender;
 import com.matcher.matchmate_backend.model.enums.auth.PrimaryAuthProvider;
 import lombok.AllArgsConstructor;
@@ -24,6 +25,8 @@ public class AdminUserSummaryResponse {
     private Boolean isActive;
     private Boolean isSuspended;
     private String suspendedReason;
+    /** Self-service lifecycle: ACTIVE / DISABLED / DELETED. */
+    private AccountStatus accountStatus;
     private Boolean onboardingCompleted;
     private OffsetDateTime createdAt;
 }

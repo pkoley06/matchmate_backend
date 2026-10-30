@@ -5,6 +5,7 @@ import com.matcher.matchmate_backend.dto.request.ListingUpdateRequest;
 import com.matcher.matchmate_backend.dto.response.ListingResponse;
 import com.matcher.matchmate_backend.model.entity.AppUser;
 import com.matcher.matchmate_backend.model.entity.Listing;
+import com.matcher.matchmate_backend.model.enums.listing.GenderPreference;
 import com.matcher.matchmate_backend.repository.AppUserRepository;
 import com.matcher.matchmate_backend.repository.ListingRepository;
 import jakarta.transaction.Transactional;
@@ -61,11 +62,13 @@ public class ListingService {
                 .location(toPoint(request.getLatitude(), request.getLongitude()))
                 .localityName(request.getLocalityName())
                 .city(request.getCity())
+                .stateName(trimToNull(request.getStateName()))
+                .postalCode(trimToNull(request.getPostalCode()))
                 .description(request.getDescription())
                 .photoUrls(request.getPhotoUrls() != null ? new ArrayList<>(request.getPhotoUrls()) : new ArrayList<>())
                 .moveInDate(request.getMoveInDate())
                 .amenities(request.getAmenities() != null ? new ArrayList<>(request.getAmenities()) : new ArrayList<>())
-                .openToAllGenders(request.getOpenToAllGenders() != null ? request.getOpenToAllGenders() : true)
+                .genderPreference(resolveGenderPreference(request.getGenderPreference(), request.getOpenToAllGenders(), host))
                 .isAvailable(true)
                 .build();
 
@@ -95,11 +98,17 @@ public class ListingService {
             listing.setLocalityName(request.getLocalityName().trim());
         }
         if (request.getCity() != null && !request.getCity().isBlank()) listing.setCity(request.getCity().trim());
+        if (request.getStateName() != null) listing.setStateName(trimToNull(request.getStateName()));
+        if (request.getPostalCode() != null) listing.setPostalCode(trimToNull(request.getPostalCode()));
         if (request.getDescription() != null) listing.setDescription(request.getDescription());
         if (request.getPhotoUrls() != null) listing.setPhotoUrls(new ArrayList<>(request.getPhotoUrls()));
         if (request.getMoveInDate() != null) listing.setMoveInDate(request.getMoveInDate());
         if (request.getAmenities() != null) listing.setAmenities(new ArrayList<>(request.getAmenities()));
-        if (request.getOpenToAllGenders() != null) listing.setOpenToAllGenders(request.getOpenToAllGenders());
+        if (request.getGenderPreference() != null) {
+            listing.setGenderPreference(request.getGenderPreference());
+        } else if (request.getOpenToAllGenders() != null) {
+            listing.setGenderPreference(GenderPreference.fromLegacy(request.getOpenToAllGenders(), listing.getHostUser().getGender()));
+        }
         if (request.getIsAvailable() != null) listing.setIsAvailable(request.getIsAvailable());
 
         return toResponse(listingRepository.save(listing));
@@ -142,6 +151,18 @@ public class ListingService {
         return GEOMETRY_FACTORY.createPoint(new Coordinate(longitude, latitude));
     }
 
+    /** Explicit preference wins; otherwise bridge the legacy boolean; otherwise open to all. */
+    public static GenderPreference resolveGenderPreference(GenderPreference explicit, Boolean legacyOpenToAll, AppUser host) {
+        if (explicit != null) return explicit;
+        return GenderPreference.fromLegacy(legacyOpenToAll, host != null ? host.getGender() : null);
+    }
+
+    public static String trimToNull(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
     /**
      * Maps an entity to its API shape. Must run inside a transaction (or with the host
      * already fetched) because {@code hostUser} is lazy and open-in-view is disabled.
@@ -179,11 +200,14 @@ public class ListingService {
                 .longitude(location != null ? location.getX() : null)
                 .localityName(listing.getLocalityName())
                 .city(listing.getCity())
+                .stateName(listing.getStateName())
+                .postalCode(listing.getPostalCode())
                 .description(listing.getDescription())
                 .photoUrls(listing.getPhotoUrls())
                 .moveInDate(listing.getMoveInDate())
                 .amenities(listing.getAmenities())
-                .openToAllGenders(listing.getOpenToAllGenders())
+                .genderPreference(listing.getGenderPreference())
+                .openToAllGenders(listing.isOpenToAllGenders())
                 .isAvailable(listing.getIsAvailable())
                 .createdAt(listing.getCreatedAt())
                 .updatedAt(listing.getUpdatedAt())

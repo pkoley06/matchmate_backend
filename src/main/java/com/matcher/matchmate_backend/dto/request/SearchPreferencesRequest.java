@@ -31,12 +31,12 @@ public class SearchPreferencesRequest {
     @Builder.Default
     private Double searchRadiusKm = 10.0;
 
-    @Builder.Default
-    private Boolean isLookingForRoom = true;
+    /** {@code null} leaves Room Finder Mode untouched. */
+    private Boolean isLookingForRoom;
 
-    @Builder.Default
-    private Boolean notifyRoomFinder = true;
+    /** Legacy alias of notification-preferences {@code notifyRoomsNearby}; {@code null} = unchanged. */
+    private Boolean notifyRoomFinder;
 
-    @Builder.Default
-    private Boolean notifyRoommateFinder = true;
+    /** Legacy alias of notification-preferences {@code notifySeekersNearby}; {@code null} = unchanged. */
+    private Boolean notifyRoommateFinder;
 }

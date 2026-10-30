@@ -16,13 +16,15 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
     long countByIsAvailableTrue();
     List<Listing> findTop5ByOrderByCreatedAtDesc();
 
+    /** Rooms near a seeker whose hosts have "Room seekers nearby" on (no preference row = on). */
     @Query(value = """
         SELECT l.* FROM listings l
         JOIN app_users h ON l.host_user_id = h.id
+        LEFT JOIN user_notification_preferences p ON p.user_id = h.id
         WHERE l.is_available = true
           AND h.is_active = true
           AND h.is_suspended = false
-          AND h.notify_roommate_finder = true
+          AND COALESCE(p.notify_seekers_nearby, true) = true
           AND h.id != :seekerUserId
           AND h.fcm_token IS NOT NULL
           AND ST_DWithin(

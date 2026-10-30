@@ -8,6 +8,7 @@ import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;
 import com.matcher.matchmate_backend.model.entity.AppUser;
 import com.matcher.matchmate_backend.model.entity.Listing;
+import com.matcher.matchmate_backend.model.entity.UserNotificationPreferences;
 import com.matcher.matchmate_backend.repository.AppUserRepository;
 import com.matcher.matchmate_backend.repository.ListingRepository;
 import org.slf4j.Logger;
@@ -19,6 +20,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * FCM dispatch. Every send is gated by the recipient's {@link UserNotificationPreferences}:
+ * the "nearby" fan-outs filter in SQL ({@code findMatchingSeekersForListing},
+ * {@code findActiveListingsWithinRadius}); the one-to-one host alerts check in Java.
+ */
 @Service
 public class NotificationService {
 
@@ -27,15 +33,18 @@ public class NotificationService {
     private final AppUserRepository userRepository;
     private final ListingRepository listingRepository;
     private final MatchingHeuristicEngine matchingEngine;
+    private final NotificationPreferencesService preferencesService;
 
     public NotificationService(
             AppUserRepository userRepository,
             ListingRepository listingRepository,
-            MatchingHeuristicEngine matchingEngine
+            MatchingHeuristicEngine matchingEngine,
+            NotificationPreferencesService preferencesService
     ) {
         this.userRepository = userRepository;
         this.listingRepository = listingRepository;
         this.matchingEngine = matchingEngine;
+        this.preferencesService = preferencesService;
     }
 
     /**
@@ -79,8 +88,9 @@ public class NotificationService {
 
     /**
      * Triggered when a new room is listed (either by a user or admin).
-     * Finds all room seekers whose search radius covers the new listing's location,
-     * calculates the compatibility match percentage, and notifies them.
+     * Finds all room seekers whose search radius covers the new listing's location and
+     * who have "Rooms listed nearby" switched on, calculates the compatibility match
+     * percentage, and notifies them.
      */
     @Async
     public void notifyMatchingSeekersForNewListing(Listing listing) {
@@ -106,7 +116,7 @@ public class NotificationService {
                         ? listing.getRoomType().name().replace('_', ' ')
                         : "place";
 
-                String title = "\uD83C\uDFE0 New Room Match! (" + matchPercent + "% Match)";
+                String title = "🏠 New Room Match! (" + matchPercent + "% Match)";
                 String body = listing.getHostUser().getFullName() + " listed a " + roomTypeStr
                         + " in " + listing.getLocalityName() + " within your search radius.";
 
@@ -127,43 +137,75 @@ public class NotificationService {
     }
 
     /**
-     * Triggered when another user comments on a host's listing. The host is taken
-     * from the caller (already loaded inside the request transaction) so this
-     * async method never touches a lazy proxy.
+     * Another user commented on the host's room. Called after the comment transaction
+     * committed with scalar listing data, so nothing lazy is touched here. Skipped when
+     * the host turned off "Likes & Comments".
      */
     @Async
-    public void notifyHostOfNewComment(Listing listing, AppUser host, AppUser author, String content) {
-        if (listing == null || host == null || author == null) return;
+    public void notifyHostOfNewComment(
+            Long listingId, String listingTitle, String listingLocality,
+            AppUser host, Long authorUserId, String authorName, String content
+    ) {
+        if (listingId == null || host == null) return;
         if (host.getFcmToken() == null || host.getFcmToken().isBlank()) return;
+        if (!preferencesService.allows(host.getId(), UserNotificationPreferences::getNotifyLikesComments)) {
+            log.debug("[FCM] Host #{} muted likes & comments; skipping comment push", host.getId());
+            return;
+        }
 
         try {
-            String roomLabel = listing.getTitle() != null && !listing.getTitle().isBlank()
-                    ? listing.getTitle()
-                    : "your room in " + (listing.getLocalityName() != null ? listing.getLocalityName() : "your area");
             String preview = content == null ? "" : content.trim();
             if (preview.length() > 90) preview = preview.substring(0, 87) + "…";
 
-            String title = "💬 " + author.getFullName() + " asked about " + roomLabel;
+            String title = "💬 " + authorName + " asked about " + roomLabel(listingTitle, listingLocality);
             String body = preview.isEmpty() ? "Open the listing to reply." : "\"" + preview + "\"";
 
             Map<String, String> data = new HashMap<>();
             data.put("type", "LISTING_COMMENT");
-            data.put("listingId", String.valueOf(listing.getId()));
-            data.put("commentAuthorId", String.valueOf(author.getId()));
-            data.put("route", "/discover/room/" + listing.getId());
+            data.put("listingId", String.valueOf(listingId));
+            data.put("commentAuthorId", String.valueOf(authorUserId));
+            data.put("route", "/discover/room/" + listingId);
             data.put("click_action", "FLUTTER_NOTIFICATION_CLICK");
 
             sendPush(host.getFcmToken(), title, body, data);
         } catch (Exception e) {
             log.error("[FCM] Error notifying host #{} about a comment on listing #{}: {}",
-                    host.getId(), listing.getId(), e.getMessage());
+                    host.getId(), listingId, e.getMessage());
+        }
+    }
+
+    /** Someone saved the host's room. Same "Likes & Comments" switch as comment alerts. */
+    @Async
+    public void notifyHostOfListingLike(
+            Long listingId, String listingTitle, String listingLocality,
+            AppUser host, Long likerUserId, String likerName
+    ) {
+        if (listingId == null || host == null) return;
+        if (host.getFcmToken() == null || host.getFcmToken().isBlank()) return;
+        if (!preferencesService.allows(host.getId(), UserNotificationPreferences::getNotifyLikesComments)) return;
+
+        try {
+            String title = "❤️ " + likerName + " liked " + roomLabel(listingTitle, listingLocality);
+            String body = "Open their profile to see if you're a match.";
+
+            Map<String, String> data = new HashMap<>();
+            data.put("type", "LISTING_LIKE");
+            data.put("listingId", String.valueOf(listingId));
+            data.put("likerUserId", String.valueOf(likerUserId));
+            data.put("route", "/users/" + likerUserId);
+            data.put("click_action", "FLUTTER_NOTIFICATION_CLICK");
+
+            sendPush(host.getFcmToken(), title, body, data);
+        } catch (Exception e) {
+            log.error("[FCM] Error notifying host #{} about a like on listing #{}: {}",
+                    host.getId(), listingId, e.getMessage());
         }
     }
 
     /**
      * Triggered when a room finder updates their target location / search radius.
-     * Finds active listings within that radius, calculates the compatibility match percentage,
-     * and notifies the hosts that an interested seeker matches their room.
+     * Finds active listings within that radius whose hosts have "Room seekers nearby"
+     * switched on, calculates the compatibility match percentage, and notifies them.
      */
     @Async
     public void notifyHostsForNewSeeker(AppUser seeker) {
@@ -191,7 +233,7 @@ public class NotificationService {
                         ? match.matchPercentage()
                         : 85;
 
-                String title = "\uD83D\uDC4B New Roommate Match! (" + matchPercent + "% Match)";
+                String title = "👋 New Roommate Match! (" + matchPercent + "% Match)";
                 String body = seeker.getFullName() + " is looking for a room in your area ("
                         + matchPercent + "% compatibility match).";
 
@@ -208,5 +250,10 @@ public class NotificationService {
         } catch (Exception e) {
             log.error("[FCM] Error notifying hosts for seeker #{}: {}", seeker.getId(), e.getMessage());
         }
+    }
+
+    private static String roomLabel(String title, String locality) {
+        if (title != null && !title.isBlank()) return title;
+        return "your room in " + (locality != null ? locality : "your area");
     }
 }

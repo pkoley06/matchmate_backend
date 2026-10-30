@@ -116,17 +116,10 @@ public class AppUser {
     @Builder.Default
     private Double searchRadiusKm = 10.0;
 
+    /** Room Finder Mode. Push toggles live in {@link UserNotificationPreferences} since V12. */
     @Column(name = "is_looking_for_room", nullable = false)
     @Builder.Default
     private Boolean isLookingForRoom = true;
-
-    @Column(name = "notify_room_finder", nullable = false)
-    @Builder.Default
-    private Boolean notifyRoomFinder = true;
-
-    @Column(name = "notify_roommate_finder", nullable = false)
-    @Builder.Default
-    private Boolean notifyRoommateFinder = true;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

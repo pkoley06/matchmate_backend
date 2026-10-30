@@ -19,12 +19,14 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
     /** Admin console user list search (by name) - see AdminUserService. */
     Page<AppUser> findByFullNameContainingIgnoreCase(String fullName, Pageable pageable);
 
+    /** Seekers near a new room who have "Rooms listed nearby" on (no preference row = on). */
     @Query(value = """
         SELECT u.* FROM app_users u
+        LEFT JOIN user_notification_preferences p ON p.user_id = u.id
         WHERE u.is_active = true
           AND u.is_suspended = false
           AND u.is_looking_for_room = true
-          AND u.notify_room_finder = true
+          AND COALESCE(p.notify_rooms_nearby, true) = true
           AND u.id != :hostUserId
           AND u.fcm_token IS NOT NULL
           AND ST_DWithin(

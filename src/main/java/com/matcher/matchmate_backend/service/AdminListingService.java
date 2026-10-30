@@ -7,6 +7,7 @@ import com.matcher.matchmate_backend.dto.response.AdminListingSummaryResponse;
 import com.matcher.matchmate_backend.dto.response.PageResponse;
 import com.matcher.matchmate_backend.model.entity.AppUser;
 import com.matcher.matchmate_backend.model.entity.Listing;
+import com.matcher.matchmate_backend.model.enums.listing.GenderPreference;
 import com.matcher.matchmate_backend.repository.AppUserRepository;
 import com.matcher.matchmate_backend.repository.ListingRepository;
 import jakarta.transaction.Transactional;
@@ -74,11 +75,13 @@ public class AdminListingService {
                 .location(toPoint(request.getLatitude(), request.getLongitude()))
                 .localityName(request.getLocalityName())
                 .city(request.getCity())
+                .stateName(ListingService.trimToNull(request.getStateName()))
+                .postalCode(ListingService.trimToNull(request.getPostalCode()))
                 .description(request.getDescription())
                 .photoUrls(request.getPhotoUrls() != null ? new ArrayList<>(request.getPhotoUrls()) : new ArrayList<>())
                 .moveInDate(request.getMoveInDate())
                 .amenities(request.getAmenities() != null ? new ArrayList<>(request.getAmenities()) : new ArrayList<>())
-                .openToAllGenders(request.getOpenToAllGenders() != null ? request.getOpenToAllGenders() : true)
+                .genderPreference(ListingService.resolveGenderPreference(request.getGenderPreference(), request.getOpenToAllGenders(), host))
                 .isAvailable(request.getIsAvailable() != null ? request.getIsAvailable() : true)
                 .build();
 
@@ -102,11 +105,17 @@ public class AdminListingService {
         }
         if (StringUtils.hasText(request.getLocalityName())) listing.setLocalityName(request.getLocalityName());
         if (StringUtils.hasText(request.getCity())) listing.setCity(request.getCity());
+        if (request.getStateName() != null) listing.setStateName(ListingService.trimToNull(request.getStateName()));
+        if (request.getPostalCode() != null) listing.setPostalCode(ListingService.trimToNull(request.getPostalCode()));
         if (request.getDescription() != null) listing.setDescription(request.getDescription());
         if (request.getPhotoUrls() != null) listing.setPhotoUrls(new ArrayList<>(request.getPhotoUrls()));
         if (request.getMoveInDate() != null) listing.setMoveInDate(request.getMoveInDate());
         if (request.getAmenities() != null) listing.setAmenities(new ArrayList<>(request.getAmenities()));
-        if (request.getOpenToAllGenders() != null) listing.setOpenToAllGenders(request.getOpenToAllGenders());
+        if (request.getGenderPreference() != null) {
+            listing.setGenderPreference(request.getGenderPreference());
+        } else if (request.getOpenToAllGenders() != null) {
+            listing.setGenderPreference(GenderPreference.fromLegacy(request.getOpenToAllGenders(), listing.getHostUser().getGender()));
+        }
         if (request.getIsAvailable() != null) listing.setIsAvailable(request.getIsAvailable());
 
         Listing saved = listingRepository.save(listing);
@@ -151,6 +160,9 @@ public class AdminListingService {
                 .depositAmount(listing.getDepositAmount())
                 .localityName(listing.getLocalityName())
                 .city(listing.getCity())
+                .stateName(listing.getStateName())
+                .postalCode(listing.getPostalCode())
+                .genderPreference(listing.getGenderPreference())
                 .isAvailable(listing.getIsAvailable())
                 .photoUrls(listing.getPhotoUrls())
                 .createdAt(listing.getCreatedAt())
@@ -174,11 +186,14 @@ public class AdminListingService {
                 .longitude(pt != null ? pt.getX() : null)
                 .localityName(listing.getLocalityName())
                 .city(listing.getCity())
+                .stateName(listing.getStateName())
+                .postalCode(listing.getPostalCode())
                 .description(listing.getDescription())
                 .photoUrls(listing.getPhotoUrls())
                 .moveInDate(listing.getMoveInDate())
                 .amenities(listing.getAmenities())
-                .openToAllGenders(listing.getOpenToAllGenders())
+                .genderPreference(listing.getGenderPreference())
+                .openToAllGenders(listing.isOpenToAllGenders())
                 .isAvailable(listing.getIsAvailable())
                 .createdAt(listing.getCreatedAt())
                 .updatedAt(listing.getUpdatedAt())

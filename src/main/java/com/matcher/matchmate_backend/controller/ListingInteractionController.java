@@ -1,6 +1,7 @@
 package com.matcher.matchmate_backend.controller;
 
 import com.matcher.matchmate_backend.dto.request.ListingCommentCreateRequest;
+import com.matcher.matchmate_backend.dto.response.ListingCommentLikeStatusResponse;
 import com.matcher.matchmate_backend.dto.response.ListingCommentResponse;
 import com.matcher.matchmate_backend.dto.response.ListingLikeStatusResponse;
 import com.matcher.matchmate_backend.dto.response.ListingResponse;
@@ -48,10 +49,14 @@ public class ListingInteractionController {
     }
 
     @GetMapping("/{id}/comments")
-    public ResponseEntity<List<ListingCommentResponse>> getComments(@PathVariable Long id) {
-        return ResponseEntity.ok(interactionService.getComments(id));
+    public ResponseEntity<List<ListingCommentResponse>> getComments(
+            @PathVariable Long id,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal
+    ) {
+        return ResponseEntity.ok(interactionService.getComments(principal.getUserId(), id));
     }
 
+    /** REST fallback for posting; the STOMP path ({@code /app/rooms/{id}/comment.send}) is equivalent. */
     @PostMapping("/{id}/comments")
     public ResponseEntity<ListingCommentResponse> addComment(
             @PathVariable Long id,
@@ -69,5 +74,13 @@ public class ListingInteractionController {
     ) {
         interactionService.deleteComment(principal.getUserId(), commentId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/comments/{commentId}/like")
+    public ResponseEntity<ListingCommentLikeStatusResponse> toggleCommentLike(
+            @PathVariable Long commentId,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal
+    ) {
+        return ResponseEntity.ok(interactionService.toggleCommentLike(principal.getUserId(), commentId));
     }
 }

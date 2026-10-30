@@ -1,6 +1,7 @@
 package com.matcher.matchmate_backend.dto.request;
 
 import com.matcher.matchmate_backend.model.enums.listing.FurnishingStatus;
+import com.matcher.matchmate_backend.model.enums.listing.GenderPreference;
 import com.matcher.matchmate_backend.model.enums.listing.ListingType;
 import com.matcher.matchmate_backend.model.enums.listing.RoomType;
 import jakarta.validation.constraints.Max;
@@ -48,12 +49,20 @@ public class AdminListingUpdateRequest {
     @Size(max = 100, message = "City cannot exceed 100 characters")
     private String city;
 
+    @Size(max = 100, message = "State cannot exceed 100 characters")
+    private String stateName;
+
+    @Size(max = 20, message = "Postal code cannot exceed 20 characters")
+    private String postalCode;
+
     @Size(max = 2000, message = "Description cannot exceed 2000 characters")
     private String description;
 
     private List<String> photoUrls;
     private LocalDate moveInDate;
     private List<String> amenities;
+    private GenderPreference genderPreference;
+    /** Legacy flag; only consulted when {@link #genderPreference} is absent. */
     private Boolean openToAllGenders;
     private Boolean isAvailable;
 }
