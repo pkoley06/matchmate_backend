@@ -26,20 +26,29 @@ public class AdminBrandingService {
         AppBranding branding = getOrCreateDefault();
 
         if (request.getAppName() != null) branding.setAppName(request.getAppName());
-        if (request.getTagline() != null) branding.setTagline(request.getTagline());
+        if (request.getTagline() != null) branding.setTagline(blankToNull(request.getTagline()));
         if (request.getPrimaryColor() != null) branding.setPrimaryColor(request.getPrimaryColor());
-        if (request.getLogoUrl() != null) branding.setLogoUrl(request.getLogoUrl());
-        if (request.getSplashImageUrl() != null) branding.setSplashImageUrl(request.getSplashImageUrl());
-        if (request.getSupportEmail() != null) branding.setSupportEmail(request.getSupportEmail());
-        if (request.getTermsUrl() != null) branding.setTermsUrl(request.getTermsUrl());
-        if (request.getPrivacyUrl() != null) branding.setPrivacyUrl(request.getPrivacyUrl());
+        if (request.getLogoUrl() != null) branding.setLogoUrl(blankToNull(request.getLogoUrl()));
+        if (request.getSplashImageUrl() != null) branding.setSplashImageUrl(blankToNull(request.getSplashImageUrl()));
+        if (request.getSupportEmail() != null) branding.setSupportEmail(blankToNull(request.getSupportEmail()));
+        if (request.getTermsUrl() != null) branding.setTermsUrl(blankToNull(request.getTermsUrl()));
+        if (request.getPrivacyUrl() != null) branding.setPrivacyUrl(blankToNull(request.getPrivacyUrl()));
         if (request.getMaintenanceMode() != null) branding.setMaintenanceMode(request.getMaintenanceMode());
-        if (request.getGoogleMapsApiKey() != null) branding.setGoogleMapsApiKey(request.getGoogleMapsApiKey());
-        if (request.getDeveloperUpiId() != null) branding.setDeveloperUpiId(request.getDeveloperUpiId());
-        if (request.getDeveloperQrCodeUrl() != null) branding.setDeveloperQrCodeUrl(request.getDeveloperQrCodeUrl());
-        if (request.getDeveloperSupportNote() != null) branding.setDeveloperSupportNote(request.getDeveloperSupportNote());
+        if (request.getGoogleMapsApiKey() != null) branding.setGoogleMapsApiKey(blankToNull(request.getGoogleMapsApiKey()));
+        if (request.getDeveloperUpiId() != null) branding.setDeveloperUpiId(blankToNull(request.getDeveloperUpiId()));
+        if (request.getDeveloperQrCodeUrl() != null) branding.setDeveloperQrCodeUrl(blankToNull(request.getDeveloperQrCodeUrl()));
+        if (request.getDeveloperSupportNote() != null) branding.setDeveloperSupportNote(blankToNull(request.getDeveloperSupportNote()));
 
         return toResponse(appBrandingRepository.save(branding));
+    }
+
+    /**
+     * Optional fields are PATCH-style: absent means "unchanged", while an empty
+     * (or whitespace-only) string means "clear", stored as NULL so readers can
+     * rely on a single "not configured" representation.
+     */
+    private static String blankToNull(String value) {
+        return (value == null || value.isBlank()) ? null : value.trim();
     }
 
     private AppBranding getOrCreateDefault() {
