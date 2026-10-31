@@ -600,11 +600,14 @@ no code changes. Below is the OCI Object Storage path, since that's where this a
 
 ### 1. Create the bucket
 1. OCI Console → **Storage → Object Storage & Archive Storage → Buckets**.
-2. **Create Bucket** → name it e.g. `matchmate-photos`.
+2. **Create Bucket** → name it e.g. `matchmate-bucket`.
 3. **Visibility: Public** — profile/listing photos aren't sensitive, and this avoids needing
    pre-authenticated requests just to display an image. Leave everything else default.
+   > [!NOTE]
+   > A new bucket defaults to **Private**. The Details tab has no visibility toggle — set it from
+   > the bucket's **Policies** tab → **Edit Visibility** → **Public** → Save.
 4. Open the bucket's details page and note its **Namespace** (shown near the top) and the
-   **Region** you created it in (e.g. `us-ashburn-1`).
+   **Region** you created it in (e.g. `ap-mumbai-1`).
 
 ### 2. Generate S3-compatible credentials
 OCI's S3-compatibility API uses "Customer Secret Keys" as access/secret key pair:
@@ -615,18 +618,28 @@ OCI's S3-compatibility API uses "Customer Secret Keys" as access/secret key pair
 
 ### 3. Fill in `/etc/matchmate-backend.env` on the VM
 Using the namespace/region from step 1 and the keys from step 2 (see
-`deploy/matchmate-backend.env.example` for the full block):
+`deploy/matchmate-backend.env.example` for the full block). This deployment's actual bucket
+(`ap-mumbai-1`, namespace `bmlk46grfoot`, bucket `matchmate-bucket`) looks like:
 ```bash
 STORAGE_PROVIDER=s3
-STORAGE_BUCKET=matchmate-photos
-STORAGE_REGION=us-ashburn-1
-STORAGE_ENDPOINT=https://<namespace>.compat.objectstorage.us-ashburn-1.oraclecloud.com
+STORAGE_BUCKET=matchmate-bucket
+STORAGE_REGION=ap-mumbai-1
+STORAGE_ENDPOINT=https://bmlk46grfoot.compat.objectstorage.ap-mumbai-1.oraclecloud.com
 STORAGE_ACCESS_KEY=<access key from step 2>
 STORAGE_SECRET_KEY=<secret key from step 2>
 STORAGE_PATH_STYLE_ACCESS=true
-STORAGE_PUBLIC_BASE_URL=https://<namespace>.objectstorage.us-ashburn-1.oraclecloud.com/n/<namespace>/b/matchmate-photos/o
+STORAGE_PUBLIC_BASE_URL=https://objectstorage.ap-mumbai-1.oraclecloud.com/n/bmlk46grfoot/b/matchmate-bucket/o
 ```
-Replace every `<namespace>` with the value from step 1.
+If you provision a different bucket/region/namespace, substitute your own values from step 1 and
+step 2 accordingly.
+
+> [!WARNING]
+> `STORAGE_ENDPOINT` and `STORAGE_PUBLIC_BASE_URL` use *different* OCI hostname shapes — mixing
+> them up causes a DNS resolution failure when the app/client tries to load an image:
+> - `STORAGE_ENDPOINT` (S3-compat API, used for uploads): namespace is a hostname **prefix** —
+>   `https://<namespace>.compat.objectstorage.<region>.oraclecloud.com`
+> - `STORAGE_PUBLIC_BASE_URL` (native public read URL): namespace is a **path segment**, not a
+>   hostname prefix — `https://objectstorage.<region>.oraclecloud.com/n/<namespace>/b/<bucket>/o`
 
 ### 4. Restart and verify
 ```bash
