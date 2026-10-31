@@ -410,6 +410,15 @@ Since there is currently no domain name assigned, configure Nginx to proxy port 
 sudo apt-get install -y nginx
 
 sudo tee /etc/nginx/sites-available/matchmate-backend > /dev/null << 'EOF'
+# Without this map, nginx does not forward the client's "Upgrade" header to
+# the upstream at all (its documented default for WebSocket proxying), so
+# Spring's handshake handler sees no Upgrade header and rejects every
+# /ws-comments connection with "Can 'Upgrade' only to 'WebSocket'.".
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
@@ -424,6 +433,9 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        # Required for the /ws-comments STOMP WebSocket handshake to upgrade.
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
     }
 }
 EOF
