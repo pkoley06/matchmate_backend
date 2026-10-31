@@ -53,6 +53,13 @@ dependencies {
 
 	// Configuration Processor for type-safe properties
 	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
+	// S3-compatible object storage client for profile/listing photo uploads. Works against
+	// real AWS S3, OCI Object Storage's S3-compatibility API, MinIO, etc. via endpointOverride.
+	implementation 'software.amazon.awssdk:s3:2.29.52'
+
+	// Server-side image recompression safety net (profile/listing photo size budgets).
+	implementation 'net.coobird:thumbnailator:0.4.20'
 }
 
 tasks.named('test') {

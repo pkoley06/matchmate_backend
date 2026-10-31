@@ -12,6 +12,7 @@ import com.matcher.matchmate_backend.model.entity.Listing;
 import com.matcher.matchmate_backend.model.enums.auth.AccountStatus;
 import com.matcher.matchmate_backend.repository.AppUserRepository;
 import com.matcher.matchmate_backend.repository.ListingRepository;
+import com.matcher.matchmate_backend.storage.StorageService;
 import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -38,17 +39,20 @@ public class UserService {
     private final ListingRepository listingRepository;
     private final ListingService listingService;
     private final NotificationService notificationService;
+    private final StorageService storageService;
 
     public UserService(
             AppUserRepository userRepository,
             ListingRepository listingRepository,
             ListingService listingService,
-            NotificationService notificationService
+            NotificationService notificationService,
+            StorageService storageService
     ) {
         this.userRepository = userRepository;
         this.listingRepository = listingRepository;
         this.listingService = listingService;
         this.notificationService = notificationService;
+        this.storageService = storageService;
     }
 
     /**
@@ -80,6 +84,8 @@ public class UserService {
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
+        String previousAvatarUrl = user.getAvatarUrl();
+
         user.setFullName(request.getFullName());
         user.setGender(request.getGender());
         user.setDateOfBirth(request.getDateOfBirth());
@@ -92,6 +98,14 @@ public class UserService {
         user.setOnboardingCompleted(true);
 
         AppUser updated = userRepository.save(user);
+
+        // Best-effort cleanup of the replaced photo. Never touches URLs we didn't hand out
+        // ourselves (e.g. the Unsplash preset avatars), and never fails the request.
+        if (previousAvatarUrl != null
+                && !previousAvatarUrl.equals(updated.getAvatarUrl())
+                && storageService.isManagedUrl(previousAvatarUrl)) {
+            storageService.delete(previousAvatarUrl);
+        }
 
         return UserDemographicsResponse.builder()
                 .userId(updated.getId())

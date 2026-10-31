@@ -74,7 +74,7 @@ public class ListingCreateRequest {
     @Size(max = 2000, message = "Description cannot exceed 2000 characters")
     private String description;
 
-    /** Direct photo URLs. No presigned-upload pipeline yet — see DESIGN_IMPLEMENTATION_PROGRESS.md. */
+    /** Already-uploaded photo URLs, obtained from POST /api/v1/uploads/listing-photos. */
     private List<String> photoUrls;
 
     private LocalDate moveInDate;

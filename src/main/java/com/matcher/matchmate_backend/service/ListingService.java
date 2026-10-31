@@ -8,6 +8,7 @@ import com.matcher.matchmate_backend.model.entity.Listing;
 import com.matcher.matchmate_backend.model.enums.listing.GenderPreference;
 import com.matcher.matchmate_backend.repository.AppUserRepository;
 import com.matcher.matchmate_backend.repository.ListingRepository;
+import com.matcher.matchmate_backend.storage.StorageService;
 import jakarta.transaction.Transactional;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -24,7 +25,6 @@ import java.util.List;
 
 /**
  * Listings owned by app users: create / read / list-mine plus owner-only update and delete.
- * No media-upload pipeline yet (see plan notes).
  */
 @Service
 public class ListingService {
@@ -35,15 +35,18 @@ public class ListingService {
     private final ListingRepository listingRepository;
     private final AppUserRepository userRepository;
     private final NotificationService notificationService;
+    private final StorageService storageService;
 
     public ListingService(
             ListingRepository listingRepository,
             AppUserRepository userRepository,
-            NotificationService notificationService
+            NotificationService notificationService,
+            StorageService storageService
     ) {
         this.listingRepository = listingRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
+        this.storageService = storageService;
     }
 
     @Transactional
@@ -101,7 +104,14 @@ public class ListingService {
         if (request.getStateName() != null) listing.setStateName(trimToNull(request.getStateName()));
         if (request.getPostalCode() != null) listing.setPostalCode(trimToNull(request.getPostalCode()));
         if (request.getDescription() != null) listing.setDescription(request.getDescription());
-        if (request.getPhotoUrls() != null) listing.setPhotoUrls(new ArrayList<>(request.getPhotoUrls()));
+        List<String> removedPhotoUrls = List.of();
+        if (request.getPhotoUrls() != null) {
+            List<String> previousPhotoUrls = listing.getPhotoUrls();
+            removedPhotoUrls = previousPhotoUrls.stream()
+                    .filter(url -> !request.getPhotoUrls().contains(url))
+                    .toList();
+            listing.setPhotoUrls(new ArrayList<>(request.getPhotoUrls()));
+        }
         if (request.getMoveInDate() != null) listing.setMoveInDate(request.getMoveInDate());
         if (request.getAmenities() != null) listing.setAmenities(new ArrayList<>(request.getAmenities()));
         if (request.getGenderPreference() != null) {
@@ -111,14 +121,19 @@ public class ListingService {
         }
         if (request.getIsAvailable() != null) listing.setIsAvailable(request.getIsAvailable());
 
-        return toResponse(listingRepository.save(listing));
+        ListingResponse response = toResponse(listingRepository.save(listing));
+        // Best-effort cleanup of photos the owner just removed. Never fails the request.
+        removedPhotoUrls.stream().filter(storageService::isManagedUrl).forEach(storageService::delete);
+        return response;
     }
 
     /** Owner-only hard delete. Likes, comments and reports cascade at the database level (V8). */
     @Transactional
     public void delete(Long requesterUserId, Long listingId) {
         Listing listing = findOwnedListing(requesterUserId, listingId);
+        List<String> photoUrls = listing.getPhotoUrls();
         listingRepository.delete(listing);
+        photoUrls.stream().filter(storageService::isManagedUrl).forEach(storageService::delete);
     }
 
     @Transactional

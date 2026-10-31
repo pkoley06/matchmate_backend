@@ -36,6 +36,9 @@ out/
 ### VS Code ###
 .vscode/
 
+### Local dev photo storage (LocalDiskStorageService fallback — never used in prod) ###
+/uploads/
+
 ### Secrets (NEVER commit) ###
 # Local settings + JWT secret. The template .env.example IS committed.
 .env

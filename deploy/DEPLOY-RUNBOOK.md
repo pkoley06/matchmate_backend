@@ -586,3 +586,59 @@ sudo journalctl -u docker -t matchmate-backend -f
 | `Firebase service account file not found` | File missing or path wrong in `/etc/matchmate-backend.env` | Verify `/etc/matchmate-backend/firebase-service-account.json` exists and is readable. |
 | `FATAL: password authentication failed for user` | Wrong `DB_PASSWORD` or `DB_USER` | Verify `/etc/matchmate-backend.env` matches PostgreSQL credentials on the VM. |
 | Port 80 unreachable from browser | OCI VCN Ingress or VM host iptables blocking | Run iptables command in Step D and verify OCI Security List. |
+
+## Step I: Object Storage Setup for Photo Uploads
+
+Profile photos and listing photos need a real bucket in production — the app's built-in
+`local` storage fallback writes to disk, which doesn't survive container restarts (the prod
+container runs `read_only: true` with no persistent volume) and only exists so the feature
+works out of the box with zero cloud setup during development.
+
+The backend talks to any S3-compatible bucket (AWS S3, OCI Object Storage, MinIO, ...) through
+one client — switching providers later is just editing env vars and restarting the container,
+no code changes. Below is the OCI Object Storage path, since that's where this app is deployed.
+
+### 1. Create the bucket
+1. OCI Console → **Storage → Object Storage & Archive Storage → Buckets**.
+2. **Create Bucket** → name it e.g. `matchmate-photos`.
+3. **Visibility: Public** — profile/listing photos aren't sensitive, and this avoids needing
+   pre-authenticated requests just to display an image. Leave everything else default.
+4. Open the bucket's details page and note its **Namespace** (shown near the top) and the
+   **Region** you created it in (e.g. `us-ashburn-1`).
+
+### 2. Generate S3-compatible credentials
+OCI's S3-compatibility API uses "Customer Secret Keys" as access/secret key pair:
+1. OCI Console → your profile icon (top right) → **My Profile**.
+2. **Customer Secret Keys** (left sidebar) → **Generate Secret Key**.
+3. Copy the **Access Key** immediately, and the **Secret Key** shown once — it cannot be
+   retrieved again after you leave the page (generate a new one if you lose it).
+
+### 3. Fill in `/etc/matchmate-backend.env` on the VM
+Using the namespace/region from step 1 and the keys from step 2 (see
+`deploy/matchmate-backend.env.example` for the full block):
+```bash
+STORAGE_PROVIDER=s3
+STORAGE_BUCKET=matchmate-photos
+STORAGE_REGION=us-ashburn-1
+STORAGE_ENDPOINT=https://<namespace>.compat.objectstorage.us-ashburn-1.oraclecloud.com
+STORAGE_ACCESS_KEY=<access key from step 2>
+STORAGE_SECRET_KEY=<secret key from step 2>
+STORAGE_PATH_STYLE_ACCESS=true
+STORAGE_PUBLIC_BASE_URL=https://<namespace>.objectstorage.us-ashburn-1.oraclecloud.com/n/<namespace>/b/matchmate-photos/o
+```
+Replace every `<namespace>` with the value from step 1.
+
+### 4. Restart and verify
+```bash
+sudo docker compose -f /opt/matchmate-backend/compose.yml restart app
+sudo docker compose -f /opt/matchmate-backend/compose.yml logs app | grep -i storage
+```
+No `IllegalStateException` about a missing `STORAGE_*` variable means it started cleanly. Then
+upload a profile photo or listing photo from the app and confirm the returned URL loads in a
+browser — it should 200 with the image, with no authentication required.
+
+### Switching to a different provider later
+Any S3-compatible service works the same way — just change `STORAGE_ENDPOINT`,
+`STORAGE_REGION`, `STORAGE_BUCKET`, the keys, and `STORAGE_PUBLIC_BASE_URL` to that provider's
+values (e.g. real AWS S3 can drop `STORAGE_ENDPOINT` entirely and use its normal bucket
+region/name). Nothing else changes.

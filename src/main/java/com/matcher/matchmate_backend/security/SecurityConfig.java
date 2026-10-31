@@ -40,6 +40,9 @@ public class SecurityConfig {
                         .requestMatchers("/health").permitAll()             // Unauthenticated health check
                         .requestMatchers("/api/v1/auth/**").permitAll()     // Public login handshake
                         .requestMatchers("/api/v1/branding/**").permitAll() // Public branding / config
+                        // Local-disk storage fallback's file-serving route stands in for what
+                        // would otherwise be a publicly readable bucket object URL.
+                        .requestMatchers("/api/v1/uploads/files/**").permitAll()
                         // STOMP handshake (+ SockJS transports). The session itself is authenticated
                         // on the CONNECT frame by StompAuthChannelInterceptor, not here.
                         .requestMatchers("/ws-comments", "/ws-comments/**").permitAll()
